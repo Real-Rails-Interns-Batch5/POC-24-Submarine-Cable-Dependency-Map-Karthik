@@ -1,0 +1,2202 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.eslintrc.json
+.gitignore
+app/favicon.ico
+app/fonts/GeistMonoVF.woff
+app/fonts/GeistVF.woff
+app/globals.css
+app/layout.tsx
+app/page.tsx
+components.json
+components/layout/BottomStrip.tsx
+components/layout/Sidebar.tsx
+components/layout/Topbar.tsx
+components/map/CableMap.tsx
+components/map/CableRoutes.tsx
+components/map/LandingPoints.tsx
+components/map/MapTooltip.tsx
+components/map/OutageMarker.tsx
+components/map/WorldMapPaths.tsx
+components/panels/OverlayShell.tsx
+components/panels/WhoPanel.tsx
+components/panels/WhyPanel.tsx
+components/providers/AppStateProvider.tsx
+components/ui/button.tsx
+lib/constants.ts
+lib/download.ts
+lib/types.ts
+lib/utils.ts
+next.config.mjs
+package.json
+postcss.config.mjs
+README.md
+tailwind.config.ts
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path=".eslintrc.json">
+{
+  "extends": ["next/core-web-vitals", "next/typescript"]
+}
+</file>
+
+<file path=".gitignore">
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
+.env*.local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+</file>
+
+<file path="app/globals.css">
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --depth-0: #070f1e;
+    --depth-1: #0a0e1a;
+    --depth-2: #0f1629;
+    --depth-3: #141e35;
+    --depth-4: #1a2540;
+
+    --border-subtle: #1e2d4a;
+    --border-default: #243352;
+    --border-emphasis: #2d3f63;
+
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --text-ghost: #3d4d66;
+
+    --accent-blue: #3b82f6;
+    --accent-teal: #14b8a6;
+    --accent-amber: #f59e0b;
+    --accent-green: #22c55e;
+    --accent-red: #ef4444;
+    --accent-purple: #a855f7;
+  }
+}
+
+body {
+  color: var(--text-primary);
+  background: var(--depth-0);
+  font-family: 'Inter', sans-serif;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 4px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--border-emphasis);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+</file>
+
+<file path="app/layout.tsx">
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { AppStateProvider } from "@/components/providers/AppStateProvider";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "Submarine Cable Dependency Map",
+  description: "Real Rails Intelligence Library: Project #24",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" className="dark">
+      <body className={inter.className}>
+        <AppStateProvider>
+          {children}
+        </AppStateProvider>
+      </body>
+    </html>
+  );
+}
+</file>
+
+<file path="app/page.tsx">
+"use client";
+
+import { useAppState } from '@/components/providers/AppStateProvider';
+import { Topbar } from '@/components/layout/Topbar';
+import { Sidebar } from '@/components/layout/Sidebar';
+import { CableMap } from '@/components/map/CableMap';
+import { BottomStrip } from '@/components/layout/BottomStrip';
+import { OverlayShell } from '@/components/panels/OverlayShell';
+import { WhyPanel } from '@/components/panels/WhyPanel';
+import { WhoPanel } from '@/components/panels/WhoPanel';
+
+export default function Home() {
+  const { state } = useAppState();
+
+  return (
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--depth-0)] text-[var(--text-primary)] relative">
+      <Topbar />
+
+      {/* Main Content Area */}
+      <div className="flex flex-1 overflow-hidden min-h-0">
+        {/* Sidebar */}
+        <Sidebar />
+
+        {/* Map Area & Bottom Strip Container */}
+        <div className="flex flex-col flex-1 relative bg-[var(--depth-0)] overflow-hidden min-w-0">
+          <main className="flex-1 relative overflow-hidden flex min-h-0">
+            <CableMap />
+          </main>
+          <BottomStrip />
+        </div>
+      </div>
+
+      {/* Overlays */}
+      {state.panel === 'why' && (
+        <OverlayShell>
+          <WhyPanel />
+        </OverlayShell>
+      )}
+      {state.panel === 'who' && (
+        <OverlayShell>
+          <WhoPanel />
+        </OverlayShell>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="components.json">
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "base-nova",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "tailwind.config.ts",
+    "css": "app/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "iconLibrary": "lucide",
+  "rtl": false,
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  },
+  "menuColor": "default",
+  "menuAccent": "subtle",
+  "registries": {}
+}
+</file>
+
+<file path="components/layout/BottomStrip.tsx">
+"use client";
+
+import React, { useEffect, useState } from 'react';
+import { useAppState } from '@/components/providers/AppStateProvider';
+import { CABLES, COUNTRIES, OWNERS, LANDING_POINTS } from '@/lib/constants';
+
+function getScoreColor(score: number) {
+  if (score >= 75) return 'var(--accent-green)';
+  if (score >= 40) return 'var(--accent-amber)';
+  return 'var(--accent-red)';
+}
+
+const MOCK_COUNTRIES = COUNTRIES.map((c, i) => ({
+  ...c,
+  dep: [85, 62, 45, 30, 20, 15, 10, 5][i] || 0,
+  red: [90, 65, 40, 20, 80, 50, 30, 10][i] || 0
+}));
+
+const MOCK_OWNERS = OWNERS.slice(0, 4).map((o, i) => ({
+  ...o,
+  share: [45, 30, 15, 10][i] || 0
+}));
+
+export function BottomStrip() {
+  const { state, dispatch } = useAppState();
+  const { activeTab, sim } = state;
+
+  const [animate, setAnimate] = useState(false);
+  
+  useEffect(() => {
+    setAnimate(false);
+    let frame: number;
+    const timeout = setTimeout(() => {
+      frame = requestAnimationFrame(() => setAnimate(true));
+    }, 50);
+    return () => {
+      clearTimeout(timeout);
+      cancelAnimationFrame(frame);
+    };
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'sim' && sim.running) {
+      dispatch({ type: 'SET_SIM_STATE', payload: { running: false, cableId: null } });
+    }
+  }, [activeTab, sim.running, dispatch]);
+
+  return (
+    <div className="h-[200px] shrink-0 border-t border-[var(--border-subtle)] bg-[var(--depth-2)] flex flex-row w-full">
+      {activeTab === 'map' && <MapPanels animate={animate} />}
+      {activeTab === 'country' && <CountryPanels animate={animate} />}
+      {activeTab === 'sim' && <SimPanels dispatch={dispatch} simState={sim} />}
+    </div>
+  );
+}
+
+function Panel({ title, children, flex = 1 }: { title: string, children: React.ReactNode, flex?: number }) {
+  return (
+    <div className="flex flex-col p-4 overflow-hidden shrink-0" style={{ flex }}>
+      <h3 className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.1em]">{title}</h3>
+      <div className="flex-1 flex flex-col min-h-0">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function MapPanels({ animate }: { animate: boolean }) {
+  const top4 = MOCK_COUNTRIES.slice(0, 4);
+
+  return (
+    <>
+      <Panel title="COUNTRY DEPENDENCY">
+        <div className="flex flex-col justify-center h-full gap-3">
+          {top4.map(c => (
+            <div key={c.id} className="flex items-center text-[11px]">
+              <span className="w-[82px] text-[var(--text-muted)] truncate shrink-0">{c.name}</span>
+              <div className="flex-1 h-[5px] bg-[var(--depth-4)] rounded-full mx-3 overflow-hidden shrink-0">
+                <div 
+                  className="h-full rounded-full" 
+                  style={{ 
+                    width: animate ? `${c.dep}%` : '0%', 
+                    backgroundColor: getScoreColor(c.red),
+                    transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)'
+                  }} 
+                />
+              </div>
+              <span className="w-[30px] text-right text-[var(--text-primary)] shrink-0">{c.dep}%</span>
+            </div>
+          ))}
+        </div>
+      </Panel>
+      <div className="w-[1px] bg-[var(--border-subtle)] shrink-0" />
+      
+      <Panel title="REDUNDANCY SCORE">
+        <div className="flex flex-col justify-center h-full gap-3">
+          {top4.map(c => (
+            <div key={c.id} className="flex items-center text-[11px]">
+              <span className="w-[82px] text-[var(--text-muted)] truncate shrink-0">{c.name}</span>
+              <div className="flex-1 h-[5px] bg-[var(--depth-4)] rounded-full mx-3 overflow-hidden shrink-0">
+                <div 
+                  className="h-full rounded-full" 
+                  style={{ 
+                    width: animate ? `${c.red}%` : '0%', 
+                    backgroundColor: getScoreColor(c.red),
+                    transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)'
+                  }} 
+                />
+              </div>
+              <span className="w-[30px] text-right text-[var(--text-primary)] shrink-0">{c.red}</span>
+            </div>
+          ))}
+        </div>
+      </Panel>
+      <div className="w-[1px] bg-[var(--border-subtle)] shrink-0" />
+
+      <Panel title="CABLE OWNERSHIP">
+        <div className="flex flex-col justify-center h-full gap-3">
+          {MOCK_OWNERS.map(o => (
+            <div key={o.id} className="flex items-center justify-between text-[11px]">
+              <div className="flex items-center gap-2">
+                <span className="text-[var(--text-primary)]">{o.name}</span>
+                <span className="text-[9px] text-[var(--text-muted)] px-1 border border-[var(--border-subtle)] rounded-[3px]">
+                  {o.type === 'private' ? 'Hyper' : 'Telco'}
+                </span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-[70px] h-[5px] bg-[var(--depth-4)] rounded-full mx-3 overflow-hidden shrink-0">
+                  <div 
+                    className="h-full rounded-full" 
+                    style={{ 
+                      width: animate ? `${o.share}%` : '0%', 
+                      backgroundColor: o.type === 'private' ? 'var(--accent-blue)' : 'var(--accent-teal)',
+                      transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)'
+                    }} 
+                  />
+                </div>
+                <span className="w-[30px] text-right text-[var(--text-primary)] shrink-0">{o.share}%</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Panel>
+    </>
+  );
+}
+
+function CountryPanels({ animate }: { animate: boolean }) {
+  return (
+    <>
+      <Panel title="ALL COUNTRIES — DEPENDENCY & REDUNDANCY" flex={2}>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-4 mt-4 pr-6">
+          {MOCK_COUNTRIES.map(c => (
+            <div key={c.id} className="flex items-center text-[11px]">
+              <span className="w-[80px] text-[var(--text-muted)] truncate shrink-0">{c.name}</span>
+              <div className="flex-1 h-[5px] bg-[var(--depth-4)] rounded-full mx-2 overflow-hidden relative shrink-0">
+                <div 
+                  className="absolute left-0 top-0 h-full rounded-full" 
+                  style={{ 
+                    width: animate ? `${c.red}%` : '0%', 
+                    backgroundColor: getScoreColor(c.red),
+                    transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)'
+                  }} 
+                />
+              </div>
+              <span className="w-[20px] text-right text-[var(--text-primary)] font-semibold shrink-0">{c.red}</span>
+            </div>
+          ))}
+        </div>
+      </Panel>
+      <div className="w-[1px] bg-[var(--border-subtle)] shrink-0" />
+      
+      <Panel title="SCORING METHODOLOGY">
+        <div className="flex flex-col justify-center h-full gap-2 text-[11px] text-[var(--text-primary)]">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 bg-[var(--accent-green)] shrink-0" />
+            <span><strong className="w-[50px] inline-block shrink-0">75–100</strong> High — multiple redundant paths</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 bg-[var(--accent-amber)] shrink-0" />
+            <span><strong className="w-[50px] inline-block shrink-0">40–74</strong> Medium — some alternatives exist</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 bg-[var(--accent-red)] shrink-0" />
+            <span><strong className="w-[50px] inline-block shrink-0">0–39</strong> Low — single-path exposure</span>
+          </div>
+        
+          <div className="mt-2 pt-2 border-t border-[var(--border-subtle)] text-[10px] text-[var(--text-ghost)] leading-[1.4]">
+            Score = (active cables × capacity diversity) ÷ traffic demand proxy. 
+            Synthetic calculation for demo. Production: RIPEstat BGP prefix coverage per ASN.
+          </div>
+        </div>
+      </Panel>
+    </>
+  );
+}
+
+function SimPanels({ dispatch, simState }: { dispatch: any, simState: any }) {
+  const [selectedCableId, setSelectedCableId] = useState<string>('');
+  
+  const simCables = CABLES.filter(c => c.status !== 'planned');
+
+  const handleDropdownChange = React.useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedCableId(e.target.value);
+    if (simState.running) {
+      dispatch({ type: 'SET_SIM_STATE', payload: { running: false, cableId: null } });
+    }
+  }, [simState.running, dispatch]);
+
+  const handleSimulate = React.useCallback(() => {
+    if (!selectedCableId) return;
+    dispatch({ type: 'SET_SIM_STATE', payload: { running: true, cableId: selectedCableId } });
+  }, [selectedCableId, dispatch]);
+
+  const handleReset = React.useCallback(() => {
+    setSelectedCableId('');
+    dispatch({ type: 'SET_SIM_STATE', payload: { running: false, cableId: null } });
+  }, [dispatch]);
+
+  const isRunning = simState.running && simState.cableId;
+  const severedCable = CABLES.find(c => c.id === simState.cableId);
+
+  const affectedLPs = isRunning && severedCable 
+    ? LANDING_POINTS.filter(lp => severedCable.landingPoints.includes(lp.id))
+    : [];
+
+  const reroutes = isRunning && severedCable
+    ? CABLES.filter(c => c.region === severedCable.region && c.status === 'active' && c.id !== severedCable.id)
+    : [];
+
+  // Critical (<40% redundancy proxy):
+  const severity = reroutes.length <= 1 ? 'critical' : 'moderate';
+  const severityColor = severity === 'critical' ? 'var(--accent-red)' : 'var(--accent-amber)';
+
+  return (
+    <>
+      <Panel title="FAILURE SIMULATION">
+        <div className="flex flex-col gap-3 mt-2">
+          <select 
+            value={selectedCableId}
+            onChange={handleDropdownChange}
+            className="w-full bg-[var(--depth-3)] border border-[var(--border-subtle)] text-[var(--text-primary)] rounded-[6px] text-[12px] p-2 focus:outline-none focus:border-[var(--border-default)]"
+          >
+            <option value="">Select a cable to cut...</option>
+            {simCables.map(c => (
+              <option key={c.id} value={c.id}>{c.name} — {c.capacityTbps}T ({c.status})</option>
+            ))}
+          </select>
+          
+          <div className="flex items-center gap-2 mt-1">
+            <button 
+              onClick={handleSimulate}
+              disabled={!selectedCableId}
+              className="px-3 py-1.5 text-[11px] text-[#ef4444] bg-transparent hover:bg-[rgba(239,68,68,0.1)] border border-[#ef4444] rounded-[5px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Simulate Cut
+            </button>
+            <button 
+              onClick={handleReset}
+              className="px-3 py-1.5 text-[11px] text-[var(--text-primary)] bg-transparent border border-[var(--border-default)] rounded-[5px] hover:bg-[var(--depth-3)] transition-colors"
+            >
+              Reset
+            </button>
+          </div>
+
+          <div className="mt-2 text-[11px] bg-[var(--depth-0)] border border-[var(--border-subtle)] rounded-[6px] p-3 min-h-[55px] flex flex-col justify-center">
+            {!isRunning ? (
+              <span className="text-[var(--text-muted)]">Select a cable and click Simulate Cut...</span>
+            ) : (
+              <div className="flex flex-col gap-0.5">
+                <span>
+                  <strong style={{ color: 'var(--accent-red)' }}>{severedCable?.name}</strong> severed.
+                </span>
+                <span className="text-[var(--text-muted)]">
+                  -{severedCable?.capacityTbps} Tbps offline capacity.
+                </span>
+                <span style={{ color: severityColor }} className="font-semibold uppercase text-[10px] mt-1">
+                  {severity} Warning: {severity === 'critical' ? 'Severe regional exposure' : 'Capacity diverted'}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      </Panel>
+      <div className="w-[1px] bg-[var(--border-subtle)] shrink-0" />
+      
+      <Panel title="AFFECTED LANDING POINTS">
+        <div className="mt-2 text-[12px] overflow-y-auto max-h-[140px] sidebar-scroll pr-2">
+          {!isRunning ? (
+            <span className="text-[var(--text-muted)]">—</span>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {affectedLPs.map(lp => {
+                const c = COUNTRIES.find(x => x.id === lp.countryId);
+                return (
+                  <li key={lp.id} className="text-[var(--text-primary)] truncate">
+                    <span className="text-[var(--accent-blue)] mr-1">•</span> {lp.name} ({c?.code})
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </Panel>
+      <div className="w-[1px] bg-[var(--border-subtle)] shrink-0" />
+      
+      <Panel title="REROUTE OPTIONS">
+        <div className="mt-2 text-[12px] overflow-y-auto max-h-[140px] sidebar-scroll pr-2">
+          {!isRunning ? (
+            <span className="text-[var(--text-muted)]">—</span>
+          ) : reroutes.length > 0 ? (
+            <ul className="flex flex-col gap-2">
+              {reroutes.map(c => (
+                <li key={c.id} className="text-[var(--text-primary)]">
+                  <span className="text-[var(--accent-green)] mr-1">•</span> {c.name} — {c.capacityTbps}T <span className="text-[var(--text-muted)] block pl-3 text-[10px]">(est. 82% capacity headroom)</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <span style={{ color: 'var(--accent-red)' }}>No active alternate routes in this region.</span>
+          )}
+        </div>
+      </Panel>
+    </>
+  );
+}
+</file>
+
+<file path="components/layout/Sidebar.tsx">
+"use client";
+
+import React, { useEffect, useState } from 'react';
+import { useAppState } from '@/components/providers/AppStateProvider';
+import { CABLES } from '@/lib/constants';
+import { getFilteredCables, redundancyColor } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+
+export function Sidebar() {
+  const { state, dispatch } = useAppState();
+  const { filters, selectedCable } = state;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const filteredCables = getFilteredCables(CABLES, filters);
+
+  const handleFilterChange = React.useCallback((key: keyof typeof state.filters, value: string) => {
+    dispatch({ type: 'SET_FILTERS', payload: { [key]: value } });
+  }, [dispatch]);
+
+  const handleClearFilters = () => {
+    dispatch({ type: 'SET_FILTERS', payload: { region: 'all', capacity: 'all', status: 'all' } });
+  };
+
+  const handleSelectCable = (id: string) => {
+    if (selectedCable === id) {
+      dispatch({ type: 'SET_SELECTED_CABLE', payload: null });
+    } else {
+      dispatch({ type: 'SET_SELECTED_CABLE', payload: id });
+    }
+  };
+
+  return (
+    <aside className="w-[252px] shrink-0 border-r border-[var(--border-subtle)] bg-[var(--depth-2)] overflow-y-auto overflow-x-hidden sidebar-scroll flex flex-col">
+      
+      {/* SECTION 1 — FILTERS */}
+      <div className="flex flex-col px-[14px] pt-[14px] pb-[6px] border-b border-[var(--border-subtle)] shrink-0">
+        <h2 className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.1em] mb-3">Filters</h2>
+        
+        <div className="flex flex-col gap-3">
+          {/* Region */}
+          <div className="flex flex-col">
+            <label className="text-[10px] text-[var(--text-muted)] font-medium mb-[3px]">Region</label>
+            <select 
+              value={filters.region}
+              onChange={(e) => handleFilterChange('region', e.target.value)}
+              className="w-full bg-[var(--depth-3)] border border-[var(--border-subtle)] text-[var(--text-primary)] rounded-[6px] text-[12px] p-1.5 focus:outline-none focus:border-[var(--border-default)]"
+            >
+              <option value="all">All</option>
+              <option value="transatlantic">Trans-Atlantic</option>
+              <option value="transpacific">Trans-Pacific</option>
+              <option value="indian-ocean">Indian Ocean</option>
+            </select>
+          </div>
+
+          {/* Capacity */}
+          <div className="flex flex-col">
+            <label className="text-[10px] text-[var(--text-muted)] font-medium mb-[3px]">Capacity</label>
+            <select 
+              value={filters.capacity}
+              onChange={(e) => handleFilterChange('capacity', e.target.value)}
+              className="w-full bg-[var(--depth-3)] border border-[var(--border-subtle)] text-[var(--text-primary)] rounded-[6px] text-[12px] p-1.5 focus:outline-none focus:border-[var(--border-default)]"
+            >
+              <option value="all">All</option>
+              <option value=">100">&gt;100 Tbps</option>
+              <option value="10-100">10–100 Tbps</option>
+              <option value="<10">&lt;10 Tbps</option>
+            </select>
+          </div>
+
+          {/* Status */}
+          <div className="flex flex-col">
+            <label className="text-[10px] text-[var(--text-muted)] font-medium mb-[3px]">Status</label>
+            <select 
+              value={filters.status}
+              onChange={(e) => handleFilterChange('status', e.target.value)}
+              className="w-full bg-[var(--depth-3)] border border-[var(--border-subtle)] text-[var(--text-primary)] rounded-[6px] text-[12px] p-1.5 focus:outline-none focus:border-[var(--border-default)]"
+            >
+              <option value="all">All</option>
+              <option value="active">Active</option>
+              <option value="planned">Planned</option>
+              <option value="under_repair">Degraded</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION 2 — CABLE LIST */}
+      <div className="flex-1 flex flex-col p-3 shrink-0">
+        <div className="flex items-baseline justify-between mb-2 px-1">
+          <h2 className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.1em]">Cables</h2>
+          <span className="text-[11px] text-[var(--text-ghost)] font-normal normal-case tracking-normal">
+            {filteredCables.length} of {CABLES.length}
+          </span>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          {filteredCables.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-6">
+              <p className="text-[12px] text-[var(--text-muted)] text-center mb-2">No cables match the active filters.</p>
+              <button onClick={handleClearFilters} className="text-[12px] text-[var(--accent-blue)] hover:underline">
+                Clear filters
+              </button>
+            </div>
+          ) : (
+            filteredCables.map(cable => {
+              const isSelected = selectedCable === cable.id;
+              const redundancyScore = cable.landingPoints.length;
+              const barColor = redundancyColor(redundancyScore);
+              const fillWidth = Math.min(100, (redundancyScore / 4) * 100); // Demo width mapping
+
+              return (
+                <div
+                  key={cable.id}
+                  onClick={() => handleSelectCable(cable.id)}
+                  className={cn(
+                    "flex flex-col px-2 py-2 cursor-pointer transition-colors relative rounded-[7px] hover:bg-[var(--depth-3)]",
+                    isSelected ? "bg-[var(--depth-3)]" : ""
+                  )}
+                >
+                  {isSelected && (
+                    <div 
+                      className="absolute left-0 top-0 bottom-0 w-[2px] rounded-l-[7px]" 
+                      style={{ backgroundColor: cable.color }} 
+                    />
+                  )}
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className="w-[8px] h-[8px] rounded-full shrink-0" style={{ backgroundColor: cable.color }} />
+                    <span className="text-[12px] text-[var(--text-primary)] font-medium truncate flex-1">{cable.name}</span>
+                    <span className="text-[10px] text-[var(--text-muted)] shrink-0">{cable.capacityTbps} Tbps</span>
+                  </div>
+                  <div className="w-full h-[3px] bg-[var(--depth-4)] rounded-full overflow-hidden ml-[10px] max-w-[calc(100%-10px)]">
+                    <div 
+                      className="h-full transition-all duration-500 ease-out rounded-full" 
+                      style={{ 
+                        width: mounted ? `${fillWidth}%` : '0%', 
+                        backgroundColor: barColor 
+                      }} 
+                    />
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* SECTION 3 — GLOBAL STATS */}
+      <div className="flex flex-col gap-2 p-3 border-t border-[var(--border-subtle)] shrink-0">
+        <div className="bg-[var(--depth-3)] border border-[var(--border-subtle)] rounded-[8px] p-3 flex flex-col">
+          <span className="text-[20px] font-bold text-[var(--text-primary)] tracking-[-0.02em] leading-none">486</span>
+          <span className="text-[11px] text-[var(--text-muted)] mt-[3px]">Active submarine cables</span>
+          <span className="text-[9px] text-[var(--text-ghost)] mt-[2px]">TeleGeography 2024</span>
+        </div>
+
+        <div className="bg-[var(--depth-3)] border border-[var(--border-subtle)] rounded-[8px] p-3 flex flex-col">
+          <span className="text-[20px] font-bold text-[var(--text-primary)] tracking-[-0.02em] leading-none">1.4 Pbps</span>
+          <span className="text-[11px] text-[var(--text-muted)] mt-[3px]">Total lit capacity</span>
+          <span className="text-[9px] text-[var(--text-ghost)] mt-[2px]">All ocean basins</span>
+        </div>
+
+        <div className="bg-[var(--depth-3)] border border-[var(--border-subtle)] rounded-[8px] p-3 flex flex-col">
+          <span className="text-[20px] font-bold text-[var(--text-primary)] tracking-[-0.02em] leading-none">95%</span>
+          <span className="text-[11px] text-[var(--text-muted)] mt-[3px]">Of global internet traffic</span>
+          <span className="text-[9px] text-[var(--text-ghost)] mt-[2px]">Carried by submarine cables</span>
+        </div>
+      </div>
+
+    </aside>
+  );
+}
+</file>
+
+<file path="components/layout/Topbar.tsx">
+"use client";
+
+import React from 'react';
+import { useAppState } from '@/components/providers/AppStateProvider';
+import { downloadData } from '@/lib/download';
+import { cn } from '@/lib/utils';
+
+export function Topbar() {
+  const { state, dispatch } = useAppState();
+
+  const tabs = [
+    { id: 'map', label: 'Cable Map' },
+    { id: 'country', label: 'Country View' },
+    { id: 'sim', label: 'Failure Sim' }
+  ] as const;
+
+  const handleTabChange = React.useCallback((tabId: string) => {
+    dispatch({ type: 'SET_ACTIVE_TAB', payload: tabId as any });
+  }, [dispatch]);
+
+  return (
+    <header className="h-[48px] bg-[var(--depth-2)] border-b border-[var(--border-subtle)] flex items-center justify-between px-4 shrink-0 whitespace-nowrap">
+      
+      {/* LOGO SECTION */}
+      <div className="flex items-center gap-3">
+        <svg 
+          viewBox="0 0 28 28" 
+          className="w-[28px] h-[28px] text-[var(--accent-blue)]"
+          fill="none" 
+          stroke="currentColor" 
+          strokeWidth="1.5"
+        >
+          <circle cx="14" cy="14" r="12" />
+          <circle cx="14" cy="14" r="8" />
+          <circle cx="14" cy="14" r="4" fill="currentColor" />
+          <path d="M14 2 L14 6 M14 22 L14 26 M2 14 L6 14 M22 14 L26 14" />
+        </svg>
+        <div className="flex flex-col justify-center">
+          <span className="text-[9px] text-[var(--text-muted)] uppercase tracking-[0.1em] leading-none mb-[2px]">
+            Real Rails Intelligence Library
+          </span>
+          <span className="text-[13px] text-[var(--text-primary)] font-semibold tracking-[-0.01em] leading-none">
+            Submarine Cable Dependency Map
+          </span>
+        </div>
+      </div>
+
+      {/* TAB GROUP */}
+      <div className="flex items-center bg-[var(--depth-3)] rounded-[8px] p-[3px] gap-1">
+        {tabs.map((tab) => {
+          const isActive = state.activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => handleTabChange(tab.id)}
+              className={cn(
+                "px-3 py-1 text-[12px] font-medium rounded-[5px] transition-colors",
+                isActive 
+                  ? "bg-[var(--depth-4)] text-[var(--text-primary)] shadow-[inset_0_0_0_1px_var(--border-default)]" 
+                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              )}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ACTIONS & BADGES */}
+      <div className="flex items-center gap-4">
+        
+        {/* DATA SOURCE BADGES */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold tracking-[0.04em] px-2 py-0.5 rounded-[4px] bg-[rgba(34,197,94,0.10)] text-[#22c55e] border border-[rgba(34,197,94,0.18)]">
+            Topology: TeleGeography
+          </span>
+          <span className="text-[10px] font-semibold tracking-[0.04em] px-2 py-0.5 rounded-[4px] bg-[rgba(245,158,11,0.10)] text-[#f59e0b] border border-[rgba(245,158,11,0.18)]">
+            Events: Synthetic
+          </span>
+        </div>
+
+        <div className="w-[1px] h-4 bg-[var(--border-subtle)] mx-1" />
+
+        {/* ACTION BUTTONS */}
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => dispatch({ type: 'SET_PANEL', payload: 'why' })}
+            className="text-[11px] text-[var(--text-primary)] bg-transparent hover:bg-[var(--depth-4)] border border-[var(--border-default)] rounded-[6px] px-[12px] py-[5px] transition-colors"
+          >
+            Why this matters
+          </button>
+          <button 
+            onClick={() => dispatch({ type: 'SET_PANEL', payload: 'who' })}
+            className="text-[11px] text-[var(--text-primary)] bg-transparent hover:bg-[var(--depth-4)] border border-[var(--border-default)] rounded-[6px] px-[12px] py-[5px] transition-colors"
+          >
+            Who controls the rail
+          </button>
+          <button 
+            onClick={downloadData}
+            className="text-[11px] text-[var(--text-primary)] bg-transparent hover:bg-[var(--depth-4)] border border-[var(--border-default)] rounded-[6px] px-[12px] py-[5px] transition-colors flex items-center gap-1"
+          >
+            <span>↓</span> Sample data
+          </button>
+        </div>
+
+      </div>
+
+    </header>
+  );
+}
+</file>
+
+<file path="components/map/CableMap.tsx">
+"use client";
+
+import React, { useMemo, useState, useRef } from 'react';
+import { useAppState } from '@/components/providers/AppStateProvider';
+import { CABLES } from '@/lib/constants';
+import { getFilteredCables } from '@/lib/utils';
+import { CableRoutes } from './CableRoutes';
+import { LandingPoints } from './LandingPoints';
+import { OutageMarker } from './OutageMarker';
+import { MapTooltip, TooltipState } from './MapTooltip';
+import { WorldMapPaths } from './WorldMapPaths';
+
+export function projectCoordinates(lon: number, lat: number): [number, number] {
+  const x = (lon + 180) * (900 / 360);
+  const y = (90 - lat) * (400 / 180);
+  return [x, y];
+}
+
+export function CableMap() {
+  const { state } = useAppState();
+  const { filters, sim } = state;
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  const [tooltip, setTooltip] = useState<TooltipState>({
+    show: false,
+    x: 0,
+    y: 0,
+    type: null,
+    data: null
+  });
+
+  const filteredCables = useMemo(() => getFilteredCables(CABLES, filters), [filters]);
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!tooltip.show || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    let x = e.clientX - rect.left;
+    let y = e.clientY - rect.top;
+    
+    // EDGE FLIP LOGIC
+    if (x + 220 > rect.width) x = x - 230;
+    if (y + 180 > rect.height) y = y - 180;
+    
+    x = Math.max(4, x);
+    y = Math.max(4, y);
+    
+    setTooltip(prev => ({ ...prev, x, y }));
+  };
+
+  return (
+    <div 
+      ref={containerRef}
+      className="flex-1 relative overflow-hidden" 
+      style={{ background: 'radial-gradient(ellipse at 40% 45%, #0d1b35 0%, #070f1e 100%)' }}
+      onMouseMove={handleMouseMove}
+    >
+      <svg viewBox="0 0 900 400" preserveAspectRatio="xMidYMid meet" className="w-full h-full block">
+        <defs>
+          <filter id="cableGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <filter id="lpGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="2" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        <WorldMapPaths />
+
+        <CableRoutes 
+          cables={filteredCables} 
+          setTooltip={setTooltip} 
+        />
+        
+        <LandingPoints 
+          cables={filteredCables}
+          setTooltip={setTooltip} 
+        />
+
+        {sim.running && sim.cableId && (
+          <OutageMarker cableId={sim.cableId} />
+        )}
+
+        {/* Legend */}
+        <g transform="translate(16, 365)">
+          <rect width="180" height="24" fill="#0f1629" fillOpacity="0.9" rx="6" stroke="#1e2d4a" />
+          
+          <line x1="10" y1="12" x2="30" y2="12" stroke="#3b82f6" strokeWidth="2" />
+          <text x="35" y="15" fontSize="10" fill="var(--text-muted)">Active</text>
+          
+          <line x1="75" y1="12" x2="95" y2="12" stroke="#14b8a6" strokeWidth="2" strokeDasharray="4 2" />
+          <text x="100" y="15" fontSize="10" fill="var(--text-muted)">Planned</text>
+        </g>
+        
+        <g transform="translate(16, 335)">
+          <rect width="180" height="24" fill="#0f1629" fillOpacity="0.9" rx="6" stroke="#1e2d4a" />
+          
+          <line x1="10" y1="12" x2="30" y2="12" stroke="#ef4444" strokeWidth="2" strokeDasharray="3 2" />
+          <text x="35" y="15" fontSize="10" fill="var(--text-muted)">Degraded</text>
+
+          <circle cx="95" cy="12" r="3" fill="#101e38" stroke="#1e3a5f" strokeWidth="1" />
+          <circle cx="108" cy="12" r="4" fill="#101e38" stroke="#60a5fa" strokeWidth="1" />
+          <text x="118" y="15" fontSize="10" fill="var(--text-muted)">Nodes</text>
+        </g>
+      </svg>
+      
+      <MapTooltip tooltip={tooltip} />
+    </div>
+  );
+}
+</file>
+
+<file path="components/map/CableRoutes.tsx">
+import React from 'react';
+import { Cable } from '@/lib/types';
+import { useAppState } from '@/components/providers/AppStateProvider';
+import { projectCoordinates } from './CableMap';
+
+export function CableRoutes({ cables, setTooltip }: any) {
+  const { state, dispatch } = useAppState();
+
+  const handleMouseEnter = (cable: Cable, e: React.MouseEvent) => {
+    setTooltip((prev: any) => ({ ...prev, show: true, type: 'cable', data: cable }));
+  };
+  const handleMouseLeave = () => {
+    setTooltip((prev: any) => ({ ...prev, show: false }));
+  };
+
+  const handleSelect = React.useCallback((cableId: string, isSelected: boolean) => {
+    dispatch({ type: 'SET_SELECTED_CABLE', payload: isSelected ? null : cableId });
+  }, [dispatch]);
+
+  return (
+    <g>
+      {/* Glow Layer (Rendered First) */}
+      {cables.map((cable: Cable) => {
+        const points = cable.path.map(p => projectCoordinates(p[0], p[1]).join(',')).join(' ');
+        return (
+          <polyline 
+            key={`glow-${cable.id}`}
+            points={points}
+            fill="none"
+            stroke={cable.color}
+            strokeWidth="8"
+            opacity="0.08"
+            filter="url(#cableGlow)"
+          />
+        );
+      })}
+
+      {/* Line Layer */}
+      {cables.map((cable: Cable) => {
+        const points = cable.path.map(p => projectCoordinates(p[0], p[1]).join(',')).join(' ');
+        const isSelected = state.selectedCable === cable.id;
+        const opacity = isSelected ? 1 : (state.selectedCable ? 0.12 : 0.75);
+        const strokeWidth = isSelected ? 3 : 1.5;
+        const dashArray = cable.status === 'planned' ? '6 4' : cable.status === 'under_repair' ? '3 2' : 'none';
+
+        return (
+          <g key={`line-${cable.id}`}>
+            {isSelected && (
+              <polyline
+                points={points}
+                fill="none"
+                stroke={cable.color}
+                strokeWidth="10"
+                opacity="0.15"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
+            <polyline
+              points={points}
+              fill="none"
+              stroke={cable.status === 'under_repair' ? '#ef4444' : cable.color}
+              strokeWidth={strokeWidth}
+              opacity={opacity}
+              strokeDasharray={dashArray}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              onMouseEnter={(e) => handleMouseEnter(cable, e)}
+              onMouseLeave={handleMouseLeave}
+              onClick={() => handleSelect(cable.id, isSelected)}
+              className="cursor-pointer"
+            />
+            {/* Invisible thicker line for easier hit testing */}
+            <polyline
+              points={points}
+              fill="none"
+              stroke="transparent"
+              strokeWidth="15"
+              onMouseEnter={(e) => handleMouseEnter(cable, e)}
+              onMouseLeave={handleMouseLeave}
+              onClick={() => handleSelect(cable.id, isSelected)}
+              className="cursor-pointer"
+            />
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+</file>
+
+<file path="components/map/LandingPoints.tsx">
+import React from 'react';
+import { LandingPoint, Cable } from '@/lib/types';
+import { LANDING_POINTS } from '@/lib/constants';
+import { projectCoordinates } from './CableMap';
+
+export function LandingPoints({ cables, setTooltip }: any) {
+  const activeLpIds = new Set<string>();
+  cables.forEach((c: Cable) => {
+    c.landingPoints.forEach(lp => activeLpIds.add(lp));
+  });
+
+  const lps = LANDING_POINTS.filter(lp => activeLpIds.has(lp.id));
+
+  const handleMouseEnter = (lp: LandingPoint, e: React.MouseEvent) => {
+    setTooltip((prev: any) => ({ ...prev, show: true, type: 'lp', data: lp }));
+  };
+
+  return (
+    <g>
+      {lps.map(lp => {
+        const [x, y] = projectCoordinates(lp.coordinates[0], lp.coordinates[1]);
+        
+        // Count cables connected to this LP to determine node size
+        const cableCount = cables.filter((c: Cable) => c.landingPoints.includes(lp.id)).length;
+        
+        let r = 3;
+        let fill = '#101e38';
+        let stroke = '#1e3a5f';
+        let sw = 0.8;
+        
+        if (cableCount >= 3) {
+          r = 6;
+          stroke = '#60a5fa';
+          sw = 1.5;
+        } else if (cableCount === 2) {
+          r = 4;
+          stroke = '#3b82f6';
+          sw = 1;
+        }
+
+        return (
+          <g 
+            key={lp.id} 
+            transform={`translate(${x}, ${y})`}
+            className="cursor-pointer"
+            onMouseEnter={(e) => handleMouseEnter(lp, e)}
+            onMouseLeave={() => setTooltip((prev: any) => ({ ...prev, show: false }))}
+          >
+            {/* Outer ring animation */}
+            <circle 
+              r={r + 4} 
+              fill="none" 
+              stroke="#3b82f6" 
+              strokeWidth="0.8" 
+              opacity="0.3"
+            >
+              <animate attributeName="r" values={`${r+2};${r+6};${r+2}`} dur="3s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.3;0.6;0.3" dur="3s" repeatCount="indefinite" />
+            </circle>
+            
+            {/* Inner dot */}
+            <circle r={r} fill={fill} stroke={stroke} strokeWidth={sw} />
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+</file>
+
+<file path="components/map/MapTooltip.tsx">
+import React from 'react';
+import { Cable, LandingPoint } from '@/lib/types';
+import { COUNTRIES, OWNERS, CABLES } from '@/lib/constants';
+import { redundancyLabel, redundancyColor } from '@/lib/utils';
+
+export interface TooltipState {
+  show: boolean;
+  x: number;
+  y: number;
+  type: 'cable' | 'lp' | null;
+  data: Cable | LandingPoint | null;
+}
+
+export function MapTooltip({ tooltip }: { tooltip: TooltipState }) {
+  if (!tooltip.show || !tooltip.data) return null;
+
+  const { x, y, type, data } = tooltip;
+
+  if (type === 'cable') {
+    const cable = data as Cable;
+    const ownersList = cable.owners.map(oid => OWNERS.find(o => o.id === oid)?.name).join(', ');
+    const redundancy = cable.landingPoints.length;
+
+    return (
+      <div 
+        className="absolute pointer-events-none bg-[var(--depth-3)] border border-[var(--border-default)] rounded-[9px] p-[11px_13px] shadow-[0_12px_32px_rgba(0,0,0,0.5)] z-50 w-[220px]"
+        style={{ left: x + 15, top: y + 15 }}
+      >
+        <h3 className="text-[13px] font-bold text-[var(--text-primary)] mb-2">{cable.name}</h3>
+        <div className="flex flex-col gap-1 text-[11px] text-[var(--text-muted)]">
+          <div className="flex justify-between">
+            <span>Capacity</span>
+            <span className="text-[var(--text-primary)]">{cable.capacityTbps} Tbps</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Status</span>
+            <span style={{ color: cable.status === 'active' ? '#22c55e' : cable.status === 'planned' ? '#14b8a6' : '#ef4444' }} className="capitalize">
+              {cable.status.replace('_', ' ')}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>Region</span>
+            <span className="text-[var(--text-primary)] capitalize">{cable.region.replace('-', ' ')}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Redundancy</span>
+            <span style={{ color: redundancyColor(redundancy) }}>{redundancyLabel(redundancy)}</span>
+          </div>
+          <div className="flex justify-between mt-1 pt-1 border-t border-[var(--border-subtle)]">
+            <span>Owners</span>
+            <span className="text-[var(--text-primary)] text-right truncate ml-2" title={ownersList}>{ownersList}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (type === 'lp') {
+    const lp = data as LandingPoint;
+    const country = COUNTRIES.find(c => c.id === lp.countryId);
+    const connectedCables = CABLES.filter((c: Cable) => c.landingPoints.includes(lp.id));
+
+    return (
+      <div 
+        className="absolute pointer-events-none bg-[var(--depth-3)] border border-[var(--border-default)] rounded-[9px] p-[11px_13px] shadow-[0_12px_32px_rgba(0,0,0,0.5)] z-50 w-[180px]"
+        style={{ left: x + 15, top: y + 15 }}
+      >
+        <h3 className="text-[12px] font-bold text-[var(--text-primary)] mb-2">{lp.name}</h3>
+        <div className="flex flex-col gap-1 text-[11px] text-[var(--text-muted)]">
+          <div className="flex justify-between">
+            <span>Country</span>
+            <span className="text-[var(--text-primary)]">{country?.name}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Node Type</span>
+            <span className="text-[var(--text-primary)]">{connectedCables.length >= 3 ? 'Major' : connectedCables.length === 2 ? 'Mid' : 'Minor'}</span>
+          </div>
+          <div className="flex justify-between mb-1 pb-1 border-b border-[var(--border-subtle)]">
+            <span>Cables</span>
+            <span className="text-[var(--text-primary)]">{connectedCables.length}</span>
+          </div>
+          <div className="flex flex-col gap-0.5 text-[10px]">
+            {connectedCables.map((c: Cable) => (
+              <span key={c.id} style={{ color: c.color }}>• {c.name}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+</file>
+
+<file path="components/map/OutageMarker.tsx">
+import React from 'react';
+import { CABLES } from '@/lib/constants';
+import { projectCoordinates } from './CableMap';
+
+export function OutageMarker({ cableId }: { cableId: string }) {
+  const cable = CABLES.find(c => c.id === cableId);
+  if (!cable || cable.path.length < 2) return null;
+
+  // Compute midpoint
+  const midIndex = Math.floor(cable.path.length / 2);
+  const p1 = cable.path[midIndex - 1];
+  const p2 = cable.path[midIndex];
+  
+  const midLon = (p1[0] + p2[0]) / 2;
+  const midLat = (p1[1] + p2[1]) / 2;
+  const [x, y] = projectCoordinates(midLon, midLat);
+
+  return (
+    <g transform={`translate(${x}, ${y})`}>
+      {/* Outer Pulse */}
+      <circle r="16" fill="rgba(239,68,68,0.12)" stroke="#ef4444" strokeWidth="1.5">
+        <animate attributeName="r" values="14;18;14" dur="1.5s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.8;1;0.8" dur="1.5s" repeatCount="indefinite" />
+      </circle>
+      
+      {/* Inner X mark */}
+      <line x1="-8" y1="-8" x2="8" y2="8" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
+      <line x1="-8" y1="8" x2="8" y2="-8" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
+    </g>
+  );
+}
+</file>
+
+<file path="components/map/WorldMapPaths.tsx">
+import React from 'react';
+
+export function WorldMapPaths() {
+  return (
+    <g fill="#16233d" stroke="#1e2d4a" strokeWidth="0.5">
+      {/* North America */}
+      <path d="M120,40 L300,40 L320,120 L280,160 L240,160 L180,100 Z" />
+      {/* South America */}
+      <path d="M280,170 L380,200 L340,320 L290,280 Z" />
+      {/* Europe */}
+      <path d="M420,50 L500,60 L480,110 L400,100 Z" />
+      {/* Africa */}
+      <path d="M410,120 L520,120 L550,200 L500,300 L430,220 Z" />
+      {/* Asia */}
+      <path d="M510,40 L850,40 L880,100 L700,160 L600,140 L520,100 Z" />
+      {/* SE Asia & India */}
+      <path d="M600,150 L680,160 L750,220 L700,240 L650,200 Z" />
+      {/* Australia */}
+      <path d="M720,250 L820,250 L800,320 L700,300 Z" />
+    </g>
+  );
+}
+</file>
+
+<file path="components/panels/OverlayShell.tsx">
+import React, { useEffect } from 'react';
+import { useAppState } from '@/components/providers/AppStateProvider';
+
+export function OverlayShell({ children }: { children: React.ReactNode }) {
+  const { dispatch } = useAppState();
+
+  const handleClose = () => {
+    dispatch({ type: 'SET_PANEL', payload: null });
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [dispatch]);
+
+  // Note: We intentionally do not close on backdrop click as requested.
+
+  return (
+    <div className="absolute inset-0 z-[100] overflow-y-auto animate-fade-in" style={{ backgroundColor: 'rgba(7,15,30,0.97)', backdropFilter: 'blur(2px)' }}>
+      <div className="min-h-full p-[32px_40px] relative max-w-5xl mx-auto flex flex-col">
+        <button 
+          onClick={handleClose}
+          className="absolute top-[32px] right-[40px] text-[12px] text-[var(--text-ghost)] hover:text-[var(--text-primary)] transition-colors"
+        >
+          Close &times;
+        </button>
+        {children}
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="components/panels/WhoPanel.tsx">
+import React from 'react';
+import { OWNERS } from '@/lib/constants';
+
+const HYPER_STATS: Record<string, { t: number, p: number }> = {
+  'Google': { t: 420, p: 29 },
+  'Meta': { t: 280, p: 19 },
+  'Microsoft': { t: 220, p: 15 },
+  'Amazon': { t: 180, p: 12 }
+};
+
+const TELCO_STATS: Record<string, { t: number, p: number }> = {
+  'Tata Communications': { t: 85, p: 6 },
+  'Orange': { t: 72, p: 5 },
+  'SingTel': { t: 60, p: 4 },
+  'KDDI': { t: 55, p: 4 }
+};
+
+export function WhoPanel() {
+  const hypers = OWNERS.filter(o => o.type === 'private').map(o => ({
+    ...o,
+    cap: HYPER_STATS[o.name]?.t || 100,
+    share: HYPER_STATS[o.name]?.p || 10
+  })).sort((a,b) => b.cap - a.cap);
+
+  const requestedTelcos = ['Tata Communications', 'Orange', 'SingTel', 'KDDI'];
+  const telcos = requestedTelcos.map(name => ({
+    name,
+    cap: TELCO_STATS[name]?.t || 50,
+    share: TELCO_STATS[name]?.p || 3
+  }));
+
+  return (
+    <div className="flex flex-col gap-8 w-full max-w-4xl mx-auto mt-4">
+      {/* Header */}
+      <div className="flex flex-col gap-4">
+        <h2 className="text-[22px] font-bold text-[var(--text-primary)] tracking-[-0.02em]">Who controls the rail</h2>
+        <p className="text-[13px] text-[var(--text-secondary)] max-w-[700px] leading-[1.65]">
+          Ownership of submarine cable capacity has shifted dramatically since 2016. 
+          Hyperscalers now rival — and in several trans-Pacific and trans-Atlantic 
+          corridors surpass — traditional telcos as the primary builders and 
+          operators of global internet infrastructure.
+        </p>
+      </div>
+
+      {/* Grid */}
+      <div className="grid grid-cols-2 gap-5 mt-2">
+        
+        {/* Card 1 */}
+        <div className="bg-[var(--depth-3)] border border-[var(--border-default)] border-l-2 border-l-[var(--accent-blue)] rounded-r-[8px] p-5">
+          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-5">Hyperscaler-owned capacity (2024 est.)</h3>
+          <div className="flex flex-col gap-4">
+            {hypers.map(o => (
+              <div key={o.name} className="flex items-center text-[12px]">
+                <span className="w-[80px] text-[var(--text-secondary)]">{o.name}:</span>
+                <div className="flex-1 mx-4 h-[6px] bg-[var(--depth-4)] rounded-full overflow-hidden">
+                  <div className="h-full bg-[var(--accent-blue)] rounded-full" style={{ width: `${o.share * 3.2}%` }} />
+                </div>
+                <div className="w-[60px] flex justify-between text-[var(--text-primary)]">
+                  <span className="font-semibold">{o.cap}T</span>
+                  <span className="text-[var(--text-muted)]">{o.share}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Card 2 */}
+        <div className="bg-[var(--depth-3)] border border-[var(--border-default)] border-l-2 border-l-[var(--accent-teal)] rounded-r-[8px] p-5">
+          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-5">Traditional telco owners</h3>
+          <div className="flex flex-col gap-4">
+            {telcos.map(o => (
+              <div key={o.name} className="flex items-center text-[12px]">
+                <span className="w-[80px] text-[var(--text-secondary)] truncate" title={o.name}>{o.name}:</span>
+                <div className="flex-1 mx-4 h-[6px] bg-[var(--depth-4)] rounded-full overflow-hidden">
+                  <div className="h-full bg-[var(--accent-teal)] rounded-full" style={{ width: `${o.share * 3.2}%` }} />
+                </div>
+                <div className="w-[60px] flex justify-between text-[var(--text-primary)]">
+                  <span className="font-semibold">{o.cap}T</span>
+                  <span className="text-[var(--text-muted)]">{o.share}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Card 3 */}
+        <div className="bg-[var(--depth-3)] border border-[var(--border-default)] border-l-2 border-l-[var(--accent-red)] rounded-r-[8px] p-5">
+          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-3">Regulatory flashpoints</h3>
+          <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
+            Infrastructure monopolies inevitably attract state scrutiny. Initiatives like the 
+            US TEAM Telecom committee carefully vet foreign involvement in cable landing 
+            licences. AUKUS discussions have explicitly addressed undersea infrastructure 
+            security in the Pacific, whilst the EU's 2023 Submarine Cable Strategy aims to 
+            bolster European digital sovereignty by funding alternative secure corridors.
+          </p>
+        </div>
+
+        {/* Card 4 */}
+        <div className="bg-[var(--depth-3)] border border-[var(--border-default)] border-l-2 border-l-[var(--text-ghost)] rounded-r-[8px] p-5">
+          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-3">Data source note</h3>
+          <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
+            Ownership data references TeleGeography Global Bandwidth Research 
+            Service. Capacity figures represent design capacity, not lit capacity. 
+            All redundancy scores and event data in this demo are synthetic and 
+            labeled accordingly.
+          </p>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="pt-4 border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-ghost)]">
+        Sources: TeleGeography Submarine Cable Map · OECD Digital Economy Outlook 2023 · CSIS Protecting Undersea Cables Report 2023 · PeeringDB · RIPEstat
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="components/panels/WhyPanel.tsx">
+import React from 'react';
+
+export function WhyPanel() {
+  return (
+    <div className="flex flex-col gap-8 w-full max-w-4xl mx-auto mt-4">
+      {/* Header */}
+      <div className="flex flex-col gap-4">
+        <h2 className="text-[22px] font-bold text-[var(--text-primary)] tracking-[-0.02em]">Why submarine cables matter</h2>
+        <p className="text-[13px] text-[var(--text-secondary)] max-w-[700px] leading-[1.65]">
+          Every email, video call, and financial transaction crosses an ocean 
+          on glass fiber thinner than a garden hose, buried on the seafloor at 
+          depths of up to 8,000 metres. Submarine cables are the physical rails 
+          of the internet — and they are almost entirely invisible to the people 
+          who depend on them.
+        </p>
+        <div className="flex items-center gap-2 mt-1">
+          <span className="px-2.5 py-0.5 text-[10px] font-semibold border border-[var(--accent-blue)] bg-[rgba(59,130,246,0.1)] text-[var(--accent-blue)] rounded-full">Everyday viewer</span>
+          <span className="px-2.5 py-0.5 text-[10px] font-semibold border border-[var(--accent-teal)] bg-[rgba(20,184,166,0.1)] text-[var(--accent-teal)] rounded-full">Builder</span>
+          <span className="px-2.5 py-0.5 text-[10px] font-semibold border border-[var(--accent-purple)] bg-[rgba(168,85,247,0.1)] text-[var(--accent-purple)] rounded-full">Allocator</span>
+        </div>
+      </div>
+
+      {/* Grid */}
+      <div className="grid grid-cols-2 gap-5 mt-2">
+        {/* Card 1 */}
+        <div className="bg-[var(--depth-3)] border border-[var(--border-default)] border-l-2 border-l-[var(--accent-blue)] rounded-r-[8px] p-5">
+          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-2">For everyday viewers</h3>
+          <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
+            When a cable breaks — ship anchors drag, earthquakes strike, trawler 
+            nets catch — entire regions lose access to sites hosted elsewhere. 
+            In 2008, a single Red Sea cut cost Egypt 70% of its international 
+            bandwidth. The map makes the hidden visible: that slowness you felt 
+            wasn't abstract; it was a broken wire on the seafloor.
+          </p>
+        </div>
+
+        {/* Card 2 */}
+        <div className="bg-[var(--depth-3)] border border-[var(--border-default)] border-l-2 border-l-[var(--accent-teal)] rounded-r-[8px] p-5">
+          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-2">For builders</h3>
+          <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
+            Latency is geography. The path your API call takes from Mumbai to 
+            London is determined by which cables your cloud provider peers with 
+            at which landing station. Understanding cable topology helps you 
+            architect for real-world latency floors — not theoretical minimums 
+            in a marketing sheet. A 180ms round trip to India isn't a 
+            misconfiguration; it's physics.
+          </p>
+        </div>
+
+        {/* Card 3 */}
+        <div className="bg-[var(--depth-3)] border border-[var(--border-default)] border-l-2 border-l-[var(--accent-purple)] rounded-r-[8px] p-5">
+          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-2">For allocators</h3>
+          <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
+            Cable consortia are multi-billion dollar infrastructure plays with 
+            25-year return horizons. Hyperscalers now own or co-own over 30% of 
+            global submarine capacity. That shifts the competitive dynamics of 
+            cloud pricing, data sovereignty policy, and the negotiating power of 
+            national telcos. Landing station locations determine which 
+            jurisdictions can compel data access.
+          </p>
+        </div>
+
+        {/* Card 4 */}
+        <div className="bg-[var(--depth-3)] border border-[var(--border-default)] border-l-2 border-l-[var(--accent-amber)] rounded-r-[8px] p-5">
+          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-2">Geopolitical dimension</h3>
+          <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
+            State actors can sever or tap submarine cables. The US, UK, and 
+            allies have mapped cable routes for strategic purposes since WWI. 
+            Today, the US TEAM Telecom review scrutinises Chinese-linked ownership 
+            of US landing stations. The EU's Submarine Cable Strategy (2023) 
+            earmarks €2.4B for European cable alternatives. This is infrastructure 
+            as geopolitics.
+          </p>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="pt-4 border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-ghost)]">
+        Sources: TeleGeography Submarine Cable Map · OECD Digital Economy Outlook 2023 · CSIS Protecting Undersea Cables Report 2023 · PeeringDB · RIPEstat
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="components/providers/AppStateProvider.tsx">
+"use client";
+
+import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import { AppState, FilterState } from '@/lib/types';
+
+type Action = 
+  | { type: 'SET_SELECTED_CABLE'; payload: string | null }
+  | { type: 'SET_ACTIVE_TAB'; payload: AppState['activeTab'] }
+  | { type: 'SET_FILTERS'; payload: Partial<FilterState> }
+  | { type: 'SET_SIM_STATE'; payload: Partial<AppState['sim']> }
+  | { type: 'SET_PANEL'; payload: AppState['panel'] };
+
+const initialState: AppState = {
+  selectedCable: null,
+  activeTab: 'map',
+  filters: { region: 'all', capacity: 'all', status: 'all' },
+  sim: { running: false, cableId: null },
+  panel: null,
+};
+
+const AppStateContext = createContext<{
+  state: AppState;
+  dispatch: React.Dispatch<Action>;
+} | undefined>(undefined);
+
+function appStateReducer(state: AppState, action: Action): AppState {
+  switch (action.type) {
+    case 'SET_SELECTED_CABLE':
+      return { ...state, selectedCable: action.payload };
+    case 'SET_ACTIVE_TAB':
+      return { ...state, activeTab: action.payload };
+    case 'SET_FILTERS':
+      return { ...state, filters: { ...state.filters, ...action.payload } };
+    case 'SET_SIM_STATE':
+      return { ...state, sim: { ...state.sim, ...action.payload } };
+    case 'SET_PANEL':
+      return { ...state, panel: action.payload };
+    default:
+      return state;
+  }
+}
+
+export function AppStateProvider({ children }: { children: ReactNode }) {
+  const [state, dispatch] = useReducer(appStateReducer, initialState);
+
+  return (
+    <AppStateContext.Provider value={{ state, dispatch }}>
+      {children}
+    </AppStateContext.Provider>
+  );
+}
+
+export function useAppState() {
+  const context = useContext(AppStateContext);
+  if (context === undefined) {
+    throw new Error('useAppState must be used within an AppStateProvider');
+  }
+  return context;
+}
+</file>
+
+<file path="components/ui/button.tsx">
+import { Button as ButtonPrimitive } from "@base-ui/react/button"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const buttonVariants = cva(
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        outline:
+          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+        ghost:
+          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+        destructive:
+          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default:
+          "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
+        lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        icon: "size-8",
+        "icon-xs":
+          "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
+        "icon-sm":
+          "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
+        "icon-lg": "size-9",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)
+
+function Button({
+  className,
+  variant = "default",
+  size = "default",
+  ...props
+}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+  return (
+    <ButtonPrimitive
+      data-slot="button"
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    />
+  )
+}
+
+export { Button, buttonVariants }
+</file>
+
+<file path="lib/constants.ts">
+// /lib/constants.ts
+import { Cable, LandingPoint, Country, Owner } from './types';
+
+export const OWNERS: Owner[] = [
+  { id: 'o1', name: 'Meta', type: 'private' },
+  { id: 'o2', name: 'Google', type: 'private' },
+  { id: 'o3', name: 'Microsoft', type: 'private' },
+  { id: 'o4', name: 'Amazon', type: 'private' },
+  { id: 'o5', name: 'Orange', type: 'telecom' },
+  { id: 'o6', name: 'Vodafone', type: 'telecom' },
+  { id: 'o7', name: 'Tata Communications', type: 'telecom' },
+  { id: 'o8', name: 'Telxius', type: 'telecom' }
+];
+
+export const COUNTRIES: Country[] = [
+  { id: 'c1', name: 'United States', code: 'US', coordinates: [-95.7129, 37.0902] },
+  { id: 'c2', name: 'United Kingdom', code: 'UK', coordinates: [-3.4360, 55.3781] },
+  { id: 'c3', name: 'France', code: 'FR', coordinates: [2.2137, 46.2276] },
+  { id: 'c4', name: 'Japan', code: 'JP', coordinates: [138.2529, 36.2048] },
+  { id: 'c5', name: 'Singapore', code: 'SG', coordinates: [103.8198, 1.3521] },
+  { id: 'c6', name: 'Brazil', code: 'BR', coordinates: [-51.9253, -14.2350] },
+  { id: 'c7', name: 'South Africa', code: 'ZA', coordinates: [22.9375, -30.5595] },
+  { id: 'c8', name: 'India', code: 'IN', coordinates: [78.9629, 20.5937] }
+];
+
+export const LANDING_POINTS: LandingPoint[] = [
+  { id: 'lp1', name: 'Virginia Beach, VA', countryId: 'c1', coordinates: [-75.9779, 36.8529] },
+  { id: 'lp2', name: 'Bude, UK', countryId: 'c2', coordinates: [-4.5437, 50.8266] },
+  { id: 'lp3', name: 'Saint-Hilaire-de-Riez, France', countryId: 'c3', coordinates: [-1.9448, 46.7289] },
+  { id: 'lp4', name: 'Shima, Japan', countryId: 'c4', coordinates: [136.8219, 34.3308] },
+  { id: 'lp5', name: 'Tuas, Singapore', countryId: 'c5', coordinates: [103.6366, 1.3294] },
+  { id: 'lp6', name: 'Fortaleza, Brazil', countryId: 'c6', coordinates: [-38.5267, -3.7319] },
+  { id: 'lp7', name: 'Melkbosstrand, South Africa', countryId: 'c7', coordinates: [18.4395, -33.7258] },
+  { id: 'lp8', name: 'Mumbai, India', countryId: 'c8', coordinates: [72.8777, 19.0760] },
+  { id: 'lp9', name: 'Marseille, France', countryId: 'c3', coordinates: [5.3698, 43.2965] },
+  { id: 'lp10', name: 'Bandon, OR', countryId: 'c1', coordinates: [-124.4084, 43.1189] },
+  { id: 'lp11', name: 'Genoa, Italy', countryId: 'c3', coordinates: [8.9463, 44.4056] }
+];
+
+export const CABLES: Cable[] = [
+  {
+    id: 'cab1',
+    name: 'MAREA',
+    lengthKm: 6600,
+    capacityTbps: 224,
+    status: 'active',
+    region: 'transatlantic',
+    owners: ['o1', 'o3', 'o8'],
+    landingPoints: ['lp1', 'lp3'],
+    path: [[-75.9779, 36.8529], [-40.0, 42.0], [-1.9448, 46.7289]],
+    color: '#3b82f6',
+    glowColor: 'rgba(59,130,246,0.15)'
+  },
+  {
+    id: 'cab2',
+    name: 'Dunant',
+    lengthKm: 6400,
+    capacityTbps: 250,
+    status: 'active',
+    region: 'transatlantic',
+    owners: ['o2', 'o5'],
+    landingPoints: ['lp1', 'lp3'],
+    path: [[-75.9779, 36.8529], [-42.0, 43.0], [-1.9448, 46.7289]],
+    color: '#60a5fa',
+    glowColor: 'rgba(96,165,250,0.15)'
+  },
+  {
+    id: 'cab3',
+    name: '2Africa',
+    lengthKm: 45000,
+    capacityTbps: 180,
+    status: 'planned',
+    region: 'emea',
+    owners: ['o1', 'o5', 'o6'],
+    landingPoints: ['lp2', 'lp7', 'lp8'],
+    path: [[-4.5437, 50.8266], [-10.0, 20.0], [18.4395, -33.7258], [50.0, -10.0], [72.8777, 19.0760]],
+    color: '#14b8a6',
+    glowColor: 'rgba(20,184,166,0.15)'
+  },
+  {
+    id: 'cab4',
+    name: 'AAE-1',
+    lengthKm: 25000,
+    capacityTbps: 40,
+    status: 'active',
+    region: 'emea',
+    owners: ['o7'],
+    landingPoints: ['lp9', 'lp8', 'lp5'],
+    path: [[5.3698, 43.2965], [30.0, 31.0], [45.0, 12.0], [72.8777, 19.0760], [103.6366, 1.3294]],
+    color: '#f59e0b',
+    glowColor: 'rgba(245,158,11,0.12)'
+  },
+  {
+    id: 'cab5',
+    name: 'SeaMeWe-6',
+    lengthKm: 19200,
+    capacityTbps: 120,
+    status: 'planned',
+    region: 'emea',
+    owners: ['o3', 'o5'],
+    landingPoints: ['lp9', 'lp8', 'lp5'],
+    path: [[5.3698, 43.2965], [32.0, 31.5], [47.0, 13.0], [72.8777, 19.0760], [103.6366, 1.3294]],
+    color: '#a855f7',
+    glowColor: 'rgba(168,85,247,0.12)'
+  },
+  {
+    id: 'cab6',
+    name: 'FASTER',
+    lengthKm: 11629,
+    capacityTbps: 60,
+    status: 'active',
+    region: 'transpacific',
+    owners: ['o2'],
+    landingPoints: ['lp10', 'lp4'],
+    path: [[-124.4084, 43.1189], [-160.0, 45.0], [170.0, 42.0], [136.8219, 34.3308]],
+    color: '#22c55e',
+    glowColor: 'rgba(34,197,94,0.12)'
+  },
+  {
+    id: 'cab7',
+    name: 'Jupiter',
+    lengthKm: 14600,
+    capacityTbps: 60,
+    status: 'active',
+    region: 'transpacific',
+    owners: ['o1', 'o4'],
+    landingPoints: ['lp10', 'lp4'],
+    path: [[-124.4084, 43.1189], [-150.0, 40.0], [180.0, 38.0], [136.8219, 34.3308]],
+    color: '#4ade80',
+    glowColor: 'rgba(74,222,128,0.12)'
+  },
+  {
+    id: 'cab8',
+    name: 'Apricot',
+    lengthKm: 12000,
+    capacityTbps: 190,
+    status: 'planned',
+    region: 'intra-asia',
+    owners: ['o1', 'o2'],
+    landingPoints: ['lp4', 'lp5'],
+    path: [[136.8219, 34.3308], [125.0, 20.0], [103.6366, 1.3294]],
+    color: '#f97316',
+    glowColor: 'rgba(249,115,22,0.12)'
+  },
+  {
+    id: 'cab9',
+    name: 'ACE',
+    lengthKm: 17000,
+    capacityTbps: 20,
+    status: 'active',
+    region: 'emea',
+    owners: ['o5'],
+    landingPoints: ['lp3', 'lp7'],
+    path: [[-1.9448, 46.7289], [-15.0, 20.0], [-10.0, 0.0], [18.4395, -33.7258]],
+    color: '#ef4444',
+    glowColor: 'rgba(239,68,68,0.12)'
+  },
+  {
+    id: 'cab10',
+    name: 'EllaLink',
+    lengthKm: 6200,
+    capacityTbps: 100,
+    status: 'active',
+    region: 'transatlantic',
+    owners: ['o8'],
+    landingPoints: ['lp6', 'lp11'],
+    path: [[-38.5267, -3.7319], [-20.0, 20.0], [8.9463, 44.4056]],
+    color: '#8b5cf6',
+    glowColor: 'rgba(139,92,246,0.12)'
+  }
+];
+</file>
+
+<file path="lib/download.ts">
+import { CABLES, LANDING_POINTS, COUNTRIES, OWNERS } from './constants';
+
+export function downloadData() {
+  const data = {
+    meta: {
+      title: "Submarine Cable Dependency Map Data",
+      source: "Real Rails Intelligence Library",
+      generated: new Date().toISOString(),
+      data_provenance: {
+        topology: "TeleGeography Submarine Cable Map (reference, 2024)",
+        redundancy_scores: "SYNTHETIC — not real-time",
+        events: "SYNTHETIC — no public event feed available"
+      }
+    },
+    cables: CABLES,
+    landing_points: LANDING_POINTS,
+    countries: COUNTRIES,
+    owners: OWNERS
+  };
+
+  const jsonStr = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonStr], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "submarine_cable_data.json";
+  document.body.appendChild(link);
+  link.click();
+  
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+</file>
+
+<file path="lib/types.ts">
+// /lib/types.ts
+export type CableStatus = 'active' | 'planned' | 'under_repair' | 'offline';
+export type CableRegion = 'transatlantic' | 'transpacific' | 'intra-asia' | 'emea' | 'americas';
+
+export interface Owner {
+  id: string;
+  name: string;
+  type: 'consortium' | 'private' | 'telecom';
+}
+
+export interface Country {
+  id: string;
+  name: string;
+  code: string;
+  coordinates: [number, number]; // [longitude, latitude]
+}
+
+export interface LandingPoint {
+  id: string;
+  name: string;
+  countryId: string;
+  coordinates: [number, number];
+}
+
+export interface Cable {
+  id: string;
+  name: string;
+  lengthKm: number;
+  capacityTbps: number;
+  status: CableStatus;
+  region: CableRegion;
+  owners: string[]; // Owner IDs
+  landingPoints: string[]; // LandingPoint IDs
+  path: [number, number][]; // Array of [longitude, latitude]
+  color: string;
+  glowColor: string;
+}
+
+export interface FilterState {
+  region: string;
+  capacity: string;
+  status: string;
+}
+
+export interface SimState {
+  running: boolean;
+  cableId: string | null;
+}
+
+export interface AppState {
+  selectedCable: string | null;
+  activeTab: 'map' | 'country' | 'sim';
+  filters: FilterState;
+  sim: SimState;
+  panel: 'why' | 'who' | null;
+}
+</file>
+
+<file path="lib/utils.ts">
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+import { Cable } from "./types"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+export function redundancyColor(count: number): string {
+  if (count >= 3) return 'var(--accent-green)';
+  if (count === 2) return 'var(--accent-amber)';
+  return 'var(--accent-red)';
+}
+
+export function redundancyLabel(count: number): string {
+  if (count >= 3) return 'High Redundancy';
+  if (count === 2) return 'Medium Redundancy';
+  return 'Critical / Single Point of Failure';
+}
+
+export function formatTbps(capacity: number): string {
+  return `${capacity} Tbps`;
+}
+
+export function getFilteredCables(cables: Cable[], filters: { region: string, capacity: string, status: string }): Cable[] {
+  return cables.filter(cable => {
+    // Region
+    if (filters.region && filters.region !== 'all') {
+      if (filters.region === 'indian-ocean') {
+        if (cable.region !== 'emea' && cable.region !== 'intra-asia') return false;
+      } else if (cable.region !== filters.region) {
+        return false;
+      }
+    }
+    
+    // Status
+    if (filters.status && filters.status !== 'all') {
+      if (cable.status !== filters.status) return false;
+    }
+    
+    // Capacity
+    if (filters.capacity && filters.capacity !== 'all') {
+      const cap = cable.capacityTbps;
+      if (filters.capacity === '>100') {
+        if (cap <= 100) return false;
+      } else if (filters.capacity === '10-100') {
+        if (cap < 10 || cap > 100) return false;
+      } else if (filters.capacity === '<10') {
+        if (cap >= 10) return false;
+      }
+    }
+    
+    return true;
+  });
+}
+
+export function positionTooltip(x: number, y: number, offset = 15) {
+  return {
+    top: `${y + offset}px`,
+    left: `${x + offset}px`,
+  };
+}
+</file>
+
+<file path="next.config.mjs">
+/** @type {import('next').NextConfig} */
+const nextConfig = {};
+
+export default nextConfig;
+</file>
+
+<file path="package.json">
+{
+  "name": "sub-dependency",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.6.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.21.0",
+    "next": "14.2.15",
+    "react": "^18",
+    "react-dom": "^18",
+    "shadcn": "^4.11.0",
+    "tailwind-merge": "^3.6.0",
+    "tw-animate-css": "^1.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.15",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
+  }
+}
+</file>
+
+<file path="postcss.config.mjs">
+/** @type {import('postcss-load-config').Config} */
+const config = {
+  plugins: {
+    tailwindcss: {},
+  },
+};
+
+export default config;
+</file>
+
+<file path="README.md">
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+
+## Getting Started
+
+First, run the development server:
+
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+</file>
+
+<file path="tailwind.config.ts">
+import type { Config } from "tailwindcss";
+
+const config: Config = {
+  content: [
+    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+      },
+    },
+  },
+  plugins: [],
+};
+export default config;
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
+</file>
+
+</files>
