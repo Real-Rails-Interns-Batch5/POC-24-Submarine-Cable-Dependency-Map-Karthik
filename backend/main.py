@@ -25,10 +25,10 @@ app.add_middleware(
 )
 
 # ---------- Routers ----------
-app.include_router(cables.router, prefix="/cables", tags=["Cables"])
-app.include_router(ownership.router, prefix="/owners", tags=["Owners"])
-app.include_router(network.router, prefix="/network", tags=["Network"])
-app.include_router(simulation.router, prefix="/simulation", tags=["Simulation"])
+app.include_router(cables.router,     prefix="/api/cables",     tags=["Cables"])
+app.include_router(ownership.router,  prefix="/api/ownership",  tags=["Ownership"])
+app.include_router(network.router,    prefix="/api/network",    tags=["Network"])
+app.include_router(simulation.router, prefix="/api/simulation", tags=["Simulation"])
 
 # ---------- Root & health ----------
 @app.get("/", tags=["Root"])

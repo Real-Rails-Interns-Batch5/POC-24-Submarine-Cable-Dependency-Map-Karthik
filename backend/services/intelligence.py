@@ -1,9 +1,9 @@
 import math
 from typing import Dict, List
 
-from .data_loader import DataLoader
-from ..models.owner import Owner
-from ..models.cable import Cable
+from backend.services.data_loader import DataLoader
+from backend.models.owner import Owner
+from backend.models.cable import Cable
 
 
 def network_overview() -> Dict[str, int | float]:
