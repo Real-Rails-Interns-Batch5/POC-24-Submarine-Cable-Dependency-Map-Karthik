@@ -18,7 +18,7 @@ import { cablesToGeoJSON, landingPointsToGeoJSON } from '@/lib/geojson';
 // but cannot scroll infinitely into empty repeated world copies.
 const WORLD_BOUNDS    = L.latLngBounds(L.latLng(-85, -180), L.latLng(85, 180));
 const NETWORK_BOUNDS  = L.latLngBounds(L.latLng(-42, -135), L.latLng(58, 150));
-const MAX_BOUNDS      = L.latLngBounds(L.latLng(-80, -200), L.latLng(82, 210));
+const MAX_BOUNDS      = L.latLngBounds(L.latLng(-85, -180), L.latLng(85, 180)); // Clamped strictly to tile bounds to eliminate black bands
 
 // ─── Tier config ─────────────────────────────────────────────────────────────
 const TIER_CONFIG = {
@@ -87,13 +87,27 @@ function buildTier2Icon(isAffected: boolean, name: string, showLabel: boolean): 
 function MapInitializer() {
   const map = useMap();
   useEffect(() => {
-    // Fit the viewport to the cable network on first render
-    map.fitBounds(NETWORK_BOUNDS, { padding: [24, 24], animate: false });
     // Enforce strict bounds — viscosity=1 means map snaps back instantly
     map.setMaxBounds(MAX_BOUNDS);
     map.options.maxBoundsViscosity = 1.0;
+
+    const handleResize = () => {
+      // Calculate minimum zoom needed to fill the viewport width horizontally
+      // Tile size is 256px at zoom 0. We need 256 * 2^z >= mapWidth.
+      const mapWidth = map.getSize().x;
+      const minZoom = Math.log2(mapWidth / 256);
+      map.setMinZoom(minZoom);
+    };
+
     // Ensure size is computed correctly inside the flex container
-    setTimeout(() => map.invalidateSize(), 80);
+    setTimeout(() => {
+      map.invalidateSize();
+      handleResize(); // Prevent zooming out into black edge bands
+      map.fitBounds(NETWORK_BOUNDS, { padding: [24, 24], animate: false });
+    }, 80);
+
+    map.on('resize', handleResize);
+    return () => { map.off('resize', handleResize); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return null;

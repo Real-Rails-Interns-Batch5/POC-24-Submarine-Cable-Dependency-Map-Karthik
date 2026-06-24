@@ -40,6 +40,7 @@ The content is organized as follows:
 </file_summary>
 
 <directory_structure>
+.env.example
 .eslintrc.json
 .gitignore
 app/favicon.ico
@@ -49,34 +50,35 @@ app/globals.css
 app/layout.tsx
 app/page.tsx
 components.json
-components/layout/BottomStrip.tsx
-components/layout/Sidebar.tsx
-components/layout/Topbar.tsx
-components/map/CableMap.tsx
-components/map/CableRoutes.tsx
-components/map/LandingPoints.tsx
+components/layout/IntelligenceSidebar.tsx
+components/map/LeafletCableMap.tsx
 components/map/MapTooltip.tsx
-components/map/OutageMarker.tsx
-components/map/WorldMapPaths.tsx
-components/panels/OverlayShell.tsx
-components/panels/WhoPanel.tsx
-components/panels/WhyPanel.tsx
 components/providers/AppStateProvider.tsx
 components/ui/button.tsx
 lib/constants.ts
 lib/download.ts
+lib/geojson.ts
 lib/types.ts
 lib/utils.ts
 next.config.mjs
 package.json
 postcss.config.mjs
+public/mock/cables.geojson
+public/mock/landing_points.geojson
+public/mock/ownership.json
 README.md
 tailwind.config.ts
+test.js
 tsconfig.json
 </directory_structure>
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path=".env.example">
+# Environment Variables
+# No mapbox tokens required for Leaflet rendering
+</file>
 
 <file path=".eslintrc.json">
 {
@@ -130,33 +132,22 @@ next-env.d.ts
 
 @layer base {
   :root {
-    --depth-0: #070f1e;
-    --depth-1: #0a0e1a;
-    --depth-2: #0f1629;
-    --depth-3: #141e35;
-    --depth-4: #1a2540;
-
-    --border-subtle: #1e2d4a;
-    --border-default: #243352;
-    --border-emphasis: #2d3f63;
-
-    --text-primary: #e2e8f0;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
-    --text-ghost: #3d4d66;
-
-    --accent-blue: #3b82f6;
-    --accent-teal: #14b8a6;
-    --accent-amber: #f59e0b;
-    --accent-green: #22c55e;
+    --background: #030712;
+    --surface: #0B1117;
+    --border: #1F2937;
+    --primary: #38BDF8;
+    --secondary: #818CF8;
+    --text-primary: #e5e7eb;
+    --text-muted: #9ca3af;
     --accent-red: #ef4444;
-    --accent-purple: #a855f7;
+    --accent-amber: #f59e0b;
+    --accent-green: #10b981;
   }
 }
 
 body {
   color: var(--text-primary);
-  background: var(--depth-0);
+  background: var(--background);
   font-family: 'Inter', sans-serif;
   margin: 0;
   padding: 0;
@@ -172,12 +163,12 @@ body {
 }
 
 .sidebar-scroll::-webkit-scrollbar-thumb {
-  background: var(--border-default);
+  background: var(--border);
   border-radius: 4px;
 }
 
 .sidebar-scroll::-webkit-scrollbar-thumb:hover {
-  background: var(--border-emphasis);
+  background: var(--primary);
 }
 
 @keyframes fadeIn {
@@ -187,6 +178,80 @@ body {
 
 .animate-fade-in {
   animation: fadeIn 0.2s ease-out forwards;
+}
+
+/* Landing point pulse animation — Tier 1 Global Hubs */
+@keyframes hubPulse {
+  0%   { transform: scale(1);   opacity: 0.7; }
+  50%  { transform: scale(2.2); opacity: 0; }
+  100% { transform: scale(1);   opacity: 0; }
+}
+
+.hub-pulse-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid #38BDF8;
+  animation: hubPulse 2.4s ease-out infinite;
+  pointer-events: none;
+}
+
+.hub-pulse-ring.ring-2 {
+  animation-delay: 0.8s;
+}
+
+/* Leaflet map attribution strip */
+.leaflet-control-attribution {
+  background: rgba(3, 7, 18, 0.75) !important;
+  color: #3d4d66 !important;
+  font-size: 9px !important;
+  border-radius: 4px 0 0 0 !important;
+}
+
+.leaflet-control-attribution a {
+  color: #64748b !important;
+}
+
+/* Ensure map container doesn't bleed */
+.leaflet-container {
+  background: #030712 !important;
+}
+
+/* Landing point tooltip */
+.lp-tooltip {
+  background: #0B1117;
+  border: 1px solid #1F2937;
+  color: #e5e7eb;
+  font-size: 11px;
+  font-family: 'Inter', sans-serif;
+  padding: 8px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+}
+
+/* Persistent LP labels */
+.lp-permanent-label {
+  color: #e2e8f0;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8), 0 1px 6px rgba(0,0,0,0.8);
+  white-space: nowrap;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  margin-left: 16px;
+  margin-top: -10px;
+}
+
+.lp-permanent-label span {
+  color: #38BDF8;
+  font-size: 8px;
+  font-weight: 500;
+  opacity: 0.9;
 }
 </file>
 
@@ -223,47 +288,29 @@ export default function RootLayout({
 <file path="app/page.tsx">
 "use client";
 
+import dynamic from 'next/dynamic';
 import { useAppState } from '@/components/providers/AppStateProvider';
-import { Topbar } from '@/components/layout/Topbar';
-import { Sidebar } from '@/components/layout/Sidebar';
-import { CableMap } from '@/components/map/CableMap';
-import { BottomStrip } from '@/components/layout/BottomStrip';
-import { OverlayShell } from '@/components/panels/OverlayShell';
-import { WhyPanel } from '@/components/panels/WhyPanel';
-import { WhoPanel } from '@/components/panels/WhoPanel';
+import { IntelligenceSidebar } from '@/components/layout/IntelligenceSidebar';
+
+const LeafletCableMap = dynamic(() => import('@/components/map/LeafletCableMap'), { 
+  ssr: false,
+  loading: () => <div className="w-full h-full bg-[#030712] flex items-center justify-center text-[#38BDF8]">Loading geographic data...</div>
+});
 
 export default function Home() {
   const { state } = useAppState();
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--depth-0)] text-[var(--text-primary)] relative">
-      <Topbar />
+    <div className="flex h-screen w-screen overflow-hidden bg-[var(--background)] text-[var(--text-primary)] relative">
+      {/* Main Visualization (70%) */}
+      <main className="flex-[7] min-w-0 relative z-0">
+        <LeafletCableMap />
+      </main>
 
-      {/* Main Content Area */}
-      <div className="flex flex-1 overflow-hidden min-h-0">
-        {/* Sidebar */}
-        <Sidebar />
-
-        {/* Map Area & Bottom Strip Container */}
-        <div className="flex flex-col flex-1 relative bg-[var(--depth-0)] overflow-hidden min-w-0">
-          <main className="flex-1 relative overflow-hidden flex min-h-0">
-            <CableMap />
-          </main>
-          <BottomStrip />
-        </div>
-      </div>
-
-      {/* Overlays */}
-      {state.panel === 'why' && (
-        <OverlayShell>
-          <WhyPanel />
-        </OverlayShell>
-      )}
-      {state.panel === 'who' && (
-        <OverlayShell>
-          <WhoPanel />
-        </OverlayShell>
-      )}
+      {/* Intelligence Sidebar (30%) */}
+      <aside className="flex-[3] min-w-[380px] max-w-[520px] border-l border-[var(--border)] overflow-y-auto sidebar-scroll">
+        <IntelligenceSidebar />
+      </aside>
     </div>
   );
 }
@@ -297,904 +344,915 @@ export default function Home() {
 }
 </file>
 
-<file path="components/layout/BottomStrip.tsx">
+<file path="components/layout/IntelligenceSidebar.tsx">
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useAppState } from '@/components/providers/AppStateProvider';
-import { CABLES, COUNTRIES, OWNERS, LANDING_POINTS } from '@/lib/constants';
+import { CABLES, OWNERS } from '@/lib/constants';
+import { getFilteredCables } from '@/lib/utils';
+import { downloadData } from '@/lib/download';
+import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 
-function getScoreColor(score: number) {
-  if (score >= 75) return 'var(--accent-green)';
-  if (score >= 40) return 'var(--accent-amber)';
-  return 'var(--accent-red)';
-}
-
-const MOCK_COUNTRIES = COUNTRIES.map((c, i) => ({
-  ...c,
-  dep: [85, 62, 45, 30, 20, 15, 10, 5][i] || 0,
-  red: [90, 65, 40, 20, 80, 50, 30, 10][i] || 0
-}));
-
-const MOCK_OWNERS = OWNERS.slice(0, 4).map((o, i) => ({
-  ...o,
-  share: [45, 30, 15, 10][i] || 0
-}));
-
-export function BottomStrip() {
+export function IntelligenceSidebar() {
   const { state, dispatch } = useAppState();
-  const { activeTab, sim } = state;
+  const { filters, selectedCable, sim } = state;
 
-  const [animate, setAnimate] = useState(false);
-  
-  useEffect(() => {
-    setAnimate(false);
-    let frame: number;
-    const timeout = setTimeout(() => {
-      frame = requestAnimationFrame(() => setAnimate(true));
-    }, 50);
-    return () => {
-      clearTimeout(timeout);
-      cancelAnimationFrame(frame);
-    };
-  }, [activeTab]);
+  const filteredCables = useMemo(() => getFilteredCables(CABLES, filters), [filters]);
 
-  useEffect(() => {
-    if (activeTab !== 'sim' && sim.running) {
-      dispatch({ type: 'SET_SIM_STATE', payload: { running: false, cableId: null } });
+  const activeCablesCount = filteredCables.filter(c => c.status === 'active').length;
+  const totalCapacity = filteredCables.reduce((sum, c) => sum + c.capacityTbps, 0);
+
+  const selectedCableData = selectedCable ? CABLES.find(c => c.id === selectedCable) : null;
+
+  // Chart data computation
+  const ownerData = useMemo(() => {
+    let hyperscalerCapacity = 0;
+    let telcoCapacity = 0;
+
+    filteredCables.forEach(cable => {
+      const cableOwners = cable.owners.map(oId => OWNERS.find(o => o.id === oId));
+      const hyperCount = cableOwners.filter(o => o?.type === 'private').length;
+      const telcoCount = cableOwners.filter(o => o?.type === 'telecom').length;
+      const total = hyperCount + telcoCount;
+
+      if (total > 0) {
+        hyperscalerCapacity += (hyperCount / total) * cable.capacityTbps;
+        telcoCapacity += (telcoCount / total) * cable.capacityTbps;
+      }
+    });
+
+    return [
+      { name: 'Hyperscalers', capacity: Math.round(hyperscalerCapacity), fill: 'var(--primary)' },
+      { name: 'Telecoms', capacity: Math.round(telcoCapacity), fill: 'var(--secondary)' }
+    ];
+  }, [filteredCables]);
+
+  const handleFilterChange = (key: keyof typeof state.filters, value: string) => {
+    dispatch({ type: 'SET_FILTERS', payload: { [key]: value } });
+  };
+
+  const handleSimulate = () => {
+    if (selectedCable) {
+      dispatch({ type: 'SET_SIM_STATE', payload: { running: true, cableId: selectedCable } });
     }
-  }, [activeTab, sim.running, dispatch]);
+  };
+
+  const handleResetSim = () => {
+    dispatch({ type: 'SET_SIM_STATE', payload: { running: false, cableId: null } });
+  };
+
+  const handleDownload = () => {
+    downloadData();
+  };
 
   return (
-    <div className="h-[200px] shrink-0 border-t border-[var(--border-subtle)] bg-[var(--depth-2)] flex flex-row w-full">
-      {activeTab === 'map' && <MapPanels animate={animate} />}
-      {activeTab === 'country' && <CountryPanels animate={animate} />}
-      {activeTab === 'sim' && <SimPanels dispatch={dispatch} simState={sim} />}
-    </div>
-  );
-}
-
-function Panel({ title, children, flex = 1 }: { title: string, children: React.ReactNode, flex?: number }) {
-  return (
-    <div className="flex flex-col p-4 overflow-hidden shrink-0" style={{ flex }}>
-      <h3 className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.1em]">{title}</h3>
-      <div className="flex-1 flex flex-col min-h-0">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function MapPanels({ animate }: { animate: boolean }) {
-  const top4 = MOCK_COUNTRIES.slice(0, 4);
-
-  return (
-    <>
-      <Panel title="COUNTRY DEPENDENCY">
-        <div className="flex flex-col justify-center h-full gap-3">
-          {top4.map(c => (
-            <div key={c.id} className="flex items-center text-[11px]">
-              <span className="w-[82px] text-[var(--text-muted)] truncate shrink-0">{c.name}</span>
-              <div className="flex-1 h-[5px] bg-[var(--depth-4)] rounded-full mx-3 overflow-hidden shrink-0">
-                <div 
-                  className="h-full rounded-full" 
-                  style={{ 
-                    width: animate ? `${c.dep}%` : '0%', 
-                    backgroundColor: getScoreColor(c.red),
-                    transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)'
-                  }} 
-                />
-              </div>
-              <span className="w-[30px] text-right text-[var(--text-primary)] shrink-0">{c.dep}%</span>
+    <div className="flex flex-col h-full bg-[var(--surface)] text-[var(--text-primary)]">
+      {/* SECTION A: Title + KPI */}
+      <div className="p-5 border-b border-[var(--border)]">
+        <h1 className="text-lg font-semibold text-[var(--primary)] mb-1">Infrastructure Intelligence</h1>
+        {selectedCableData ? (
+          <div className="mt-4 flex flex-col bg-[var(--background)] border border-[var(--border)] rounded shadow-sm overflow-hidden">
+            {/* Header / Badge */}
+            <div className="flex justify-between items-center p-3 border-b border-[var(--border)] bg-[#0f1d38]/30">
+              <h2 className="text-sm font-bold text-gray-100 uppercase tracking-widest">{selectedCableData.name}</h2>
+              <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded tracking-widest ${selectedCableData.status === 'active' ? 'bg-[#22c55e]/20 text-[#22c55e] border border-[#22c55e]/30' : 'bg-[#f59e0b]/20 text-[#f59e0b] border border-[#f59e0b]/30'}`}>
+                {selectedCableData.status}
+              </span>
             </div>
-          ))}
-        </div>
-      </Panel>
-      <div className="w-[1px] bg-[var(--border-subtle)] shrink-0" />
-      
-      <Panel title="REDUNDANCY SCORE">
-        <div className="flex flex-col justify-center h-full gap-3">
-          {top4.map(c => (
-            <div key={c.id} className="flex items-center text-[11px]">
-              <span className="w-[82px] text-[var(--text-muted)] truncate shrink-0">{c.name}</span>
-              <div className="flex-1 h-[5px] bg-[var(--depth-4)] rounded-full mx-3 overflow-hidden shrink-0">
-                <div 
-                  className="h-full rounded-full" 
-                  style={{ 
-                    width: animate ? `${c.red}%` : '0%', 
-                    backgroundColor: getScoreColor(c.red),
-                    transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)'
-                  }} 
-                />
+            
+            {/* 2x2 Grid for Core Metrics */}
+            <div className="grid grid-cols-2 gap-[1px] bg-[var(--border)]">
+              <div className="bg-[var(--background)] p-3 flex flex-col">
+                <span className="text-[9px] uppercase text-[var(--text-muted)] font-semibold tracking-wider mb-0.5">Capacity</span>
+                <span className="text-sm font-bold text-gray-200">{selectedCableData.capacityTbps} <span className="text-[10px] text-[#64748b]">Tbps</span></span>
               </div>
-              <span className="w-[30px] text-right text-[var(--text-primary)] shrink-0">{c.red}</span>
-            </div>
-          ))}
-        </div>
-      </Panel>
-      <div className="w-[1px] bg-[var(--border-subtle)] shrink-0" />
-
-      <Panel title="CABLE OWNERSHIP">
-        <div className="flex flex-col justify-center h-full gap-3">
-          {MOCK_OWNERS.map(o => (
-            <div key={o.id} className="flex items-center justify-between text-[11px]">
-              <div className="flex items-center gap-2">
-                <span className="text-[var(--text-primary)]">{o.name}</span>
-                <span className="text-[9px] text-[var(--text-muted)] px-1 border border-[var(--border-subtle)] rounded-[3px]">
-                  {o.type === 'private' ? 'Hyper' : 'Telco'}
+              <div className="bg-[var(--background)] p-3 flex flex-col">
+                <span className="text-[9px] uppercase text-[var(--text-muted)] font-semibold tracking-wider mb-0.5">Landing Hubs</span>
+                <span className="text-sm font-bold text-gray-200">{selectedCableData.landingPoints.length}</span>
+              </div>
+              <div className="bg-[var(--background)] p-3 flex flex-col">
+                <span className="text-[9px] uppercase text-[var(--text-muted)] font-semibold tracking-wider mb-0.5">Connected Region</span>
+                <span className="text-sm font-bold text-gray-200 uppercase">{selectedCableData.region}</span>
+              </div>
+              <div className="bg-[var(--background)] p-3 flex flex-col">
+                <span className="text-[9px] uppercase text-[var(--text-muted)] font-semibold tracking-wider mb-0.5">Ownership</span>
+                <span className="text-[10px] font-bold text-[#38BDF8] leading-tight mt-1 truncate" title={selectedCableData.owners.map(oId => OWNERS.find(o => o.id === oId)?.name).join(', ')}>
+                  {selectedCableData.owners.map(oId => OWNERS.find(o => o.id === oId)?.name).join(', ')}
                 </span>
               </div>
-              <div className="flex items-center">
-                <div className="w-[70px] h-[5px] bg-[var(--depth-4)] rounded-full mx-3 overflow-hidden shrink-0">
-                  <div 
-                    className="h-full rounded-full" 
-                    style={{ 
-                      width: animate ? `${o.share}%` : '0%', 
-                      backgroundColor: o.type === 'private' ? 'var(--accent-blue)' : 'var(--accent-teal)',
-                      transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)'
-                    }} 
-                  />
-                </div>
-                <span className="w-[30px] text-right text-[var(--text-primary)] shrink-0">{o.share}%</span>
-              </div>
             </div>
-          ))}
-        </div>
-      </Panel>
-    </>
-  );
-}
 
-function CountryPanels({ animate }: { animate: boolean }) {
-  return (
-    <>
-      <Panel title="ALL COUNTRIES — DEPENDENCY & REDUNDANCY" flex={2}>
-        <div className="grid grid-cols-2 gap-x-8 gap-y-4 mt-4 pr-6">
-          {MOCK_COUNTRIES.map(c => (
-            <div key={c.id} className="flex items-center text-[11px]">
-              <span className="w-[80px] text-[var(--text-muted)] truncate shrink-0">{c.name}</span>
-              <div className="flex-1 h-[5px] bg-[var(--depth-4)] rounded-full mx-2 overflow-hidden relative shrink-0">
-                <div 
-                  className="absolute left-0 top-0 h-full rounded-full" 
-                  style={{ 
-                    width: animate ? `${c.red}%` : '0%', 
-                    backgroundColor: getScoreColor(c.red),
-                    transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)'
-                  }} 
-                />
+            {/* Risk / Redundancy Bar */}
+            <div className="flex border-t border-[var(--border)] bg-[#0B1117]">
+              <div className="flex-1 p-2 border-r border-[var(--border)] flex justify-between items-center">
+                <span className="text-[9px] uppercase text-[var(--text-muted)] font-semibold tracking-wider">Redundancy</span>
+                <span className={`text-[10px] font-bold ${selectedCableData.landingPoints.length > 2 ? 'text-[#22c55e]' : selectedCableData.landingPoints.length === 2 ? 'text-[#f59e0b]' : 'text-[#ef4444]'}`}>
+                  {selectedCableData.landingPoints.length > 2 ? 'HIGH' : selectedCableData.landingPoints.length === 2 ? 'MEDIUM' : 'LOW'}
+                </span>
               </div>
-              <span className="w-[20px] text-right text-[var(--text-primary)] font-semibold shrink-0">{c.red}</span>
+              <div className="flex-1 p-2 flex justify-between items-center">
+                <span className="text-[9px] uppercase text-[var(--text-muted)] font-semibold tracking-wider">Risk Rating</span>
+                <span className={`text-[10px] font-bold ${selectedCableData.landingPoints.length > 2 ? 'text-[#22c55e]' : selectedCableData.landingPoints.length === 2 ? 'text-[#f59e0b]' : 'text-[#ef4444]'}`}>
+                  {selectedCableData.landingPoints.length > 2 ? 'LOW' : selectedCableData.landingPoints.length === 2 ? 'MEDIUM' : 'HIGH'}
+                </span>
+              </div>
             </div>
-          ))}
-        </div>
-      </Panel>
-      <div className="w-[1px] bg-[var(--border-subtle)] shrink-0" />
-      
-      <Panel title="SCORING METHODOLOGY">
-        <div className="flex flex-col justify-center h-full gap-2 text-[11px] text-[var(--text-primary)]">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 bg-[var(--accent-green)] shrink-0" />
-            <span><strong className="w-[50px] inline-block shrink-0">75–100</strong> High — multiple redundant paths</span>
+
+            {/* Analytical Context */}
+            <div className="p-3 border-t border-[var(--border)] bg-[#0B1117]">
+              <span className="text-[9px] uppercase text-[#818CF8] font-bold tracking-widest mb-1.5 block">Why This Matters</span>
+              <p className="text-[10px] text-[#94a3b8] leading-relaxed">
+                {selectedCableData.name === 'AAE-1' ? 'Supports connectivity between Europe, the Middle East, and Asia. Disruption would increase routing dependency on alternative Mediterranean corridors.' :
+                 selectedCableData.name === '2Africa' ? 'Encircles the African continent, providing critical backbone access to emerging markets. Disruption impacts vast swathes of coastal infrastructure.' :
+                 ['MAREA', 'Dunant', 'EllaLink'].includes(selectedCableData.name) ? 'Serves as a primary Trans-Atlantic data pipe. High traffic volume creates massive potential impact during severance.' :
+                 ['FASTER', 'Jupiter'].includes(selectedCableData.name) ? 'Critical Trans-Pacific corridor. Supports major hyperscaler synchronization between US and Asian data centers.' :
+                 `Strategic corridor in the ${selectedCableData.region} region. Disruption requires immediate payload shifting to adjacent subsea networks.`}
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 bg-[var(--accent-amber)] shrink-0" />
-            <span><strong className="w-[50px] inline-block shrink-0">40–74</strong> Medium — some alternatives exist</span>
+        ) : (
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <div className="flex flex-col bg-[var(--background)] border border-[var(--border)] p-2.5 rounded shadow-sm">
+              <span className="text-xl font-bold text-[var(--text-primary)] leading-none tracking-tight mb-1">{activeCablesCount}</span>
+              <span className="text-[9px] uppercase font-semibold tracking-wider text-[var(--text-muted)] mb-1.5">Active Cables</span>
+              <span className="text-[9px] text-[#64748b] leading-tight">Critical physical connections carrying global backbone traffic.</span>
+            </div>
+            
+            <div className="flex flex-col bg-[var(--background)] border border-[var(--border)] p-2.5 rounded shadow-sm">
+              <span className="text-xl font-bold text-[var(--text-primary)] leading-none tracking-tight mb-1">{new Set(filteredCables.flatMap(c => c.landingPoints)).size}</span>
+              <span className="text-[9px] uppercase font-semibold tracking-wider text-[var(--text-muted)] mb-1.5">Landing Points</span>
+              <span className="text-[9px] text-[#64748b] leading-tight">Coastal hubs terminating and amplifying signals.</span>
+            </div>
+
+            <div className="flex flex-col bg-[var(--background)] border border-[var(--border)] p-2.5 rounded shadow-sm">
+              <span className="text-xl font-bold text-[var(--text-primary)] leading-none tracking-tight mb-1">{totalCapacity} <span className="text-xs font-medium text-[var(--text-muted)]">Tbps</span></span>
+              <span className="text-[9px] uppercase font-semibold tracking-wider text-[var(--text-muted)] mb-1.5">Total Capacity</span>
+              <span className="text-[9px] text-[#64748b] leading-tight">Supports major transcontinental internet corridors.</span>
+            </div>
+
+            <div className="flex flex-col bg-[var(--background)] border border-[var(--border)] p-2.5 rounded shadow-sm">
+              <span className={`text-xl font-bold leading-none tracking-tight mb-1 ${sim.running ? 'text-[#ef4444]' : 'text-[#38BDF8]'}`}>{sim.running ? '74' : '92'}<span className="text-xs font-medium opacity-50">/100</span></span>
+              <span className="text-[9px] uppercase font-semibold tracking-wider text-[var(--text-muted)] mb-1.5">Network Health</span>
+              <span className="text-[9px] text-[#64748b] leading-tight">Current aggregated global infrastructure resilience score.</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 bg-[var(--accent-red)] shrink-0" />
-            <span><strong className="w-[50px] inline-block shrink-0">0–39</strong> Low — single-path exposure</span>
-          </div>
+        )}
+      </div>
+
+      {/* SECTION B: Intelligence Assessment */}
+      <div className="p-5 border-b border-[var(--border)]">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">Current Assessment</h3>
         
-          <div className="mt-2 pt-2 border-t border-[var(--border-subtle)] text-[10px] text-[var(--text-ghost)] leading-[1.4]">
-            Score = (active cables × capacity diversity) ÷ traffic demand proxy. 
-            Synthetic calculation for demo. Production: RIPEstat BGP prefix coverage per ASN.
+        {/* Core Indicators */}
+        <div className="flex flex-col gap-1.5 mb-4 border-l-2 border-[#38BDF8] pl-3">
+          <div className="flex justify-between items-center">
+            <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider">Network Health</span>
+            <span className={`text-xs font-bold ${sim.running ? 'text-[#ef4444]' : 'text-[#38BDF8]'}`}>{sim.running ? '74/100' : '92/100'}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider">Infrastructure Resilience</span>
+            <span className={`text-xs font-bold ${sim.running ? 'text-[#f59e0b]' : 'text-[#22c55e]'}`}>{sim.running ? 'Stressed' : 'Strong'}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider">Ownership Concentration</span>
+            <span className="text-xs font-bold text-[#f59e0b]">Moderate</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider">Primary Bottleneck</span>
+            <span className="text-xs font-bold text-gray-200">Suez Corridor</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider">Regional Dependency</span>
+            <span className="text-xs font-bold text-gray-200">High in EMEA</span>
           </div>
         </div>
-      </Panel>
-    </>
-  );
-}
 
-function SimPanels({ dispatch, simState }: { dispatch: any, simState: any }) {
-  const [selectedCableId, setSelectedCableId] = useState<string>('');
-  
-  const simCables = CABLES.filter(c => c.status !== 'planned');
+        {/* 3 Compact Cards */}
+        <div className="flex flex-col gap-2">
+          <div className="bg-[var(--background)] border border-[var(--border)] p-2.5 rounded shadow-sm">
+            <span className="text-[9px] uppercase font-bold text-[#38BDF8] tracking-widest block mb-1">Network Exposure</span>
+            <span className="text-[10px] text-[#cbd5e1] leading-tight block">
+              {activeCablesCount} active cables currently connect major economic corridors, bearing concentrated global traffic.
+            </span>
+          </div>
 
-  const handleDropdownChange = React.useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedCableId(e.target.value);
-    if (simState.running) {
-      dispatch({ type: 'SET_SIM_STATE', payload: { running: false, cableId: null } });
-    }
-  }, [simState.running, dispatch]);
+          <div className="bg-[var(--background)] border border-[var(--border)] p-2.5 rounded shadow-sm">
+            <span className="text-[9px] uppercase font-bold text-[#38BDF8] tracking-widest block mb-1">Redundancy Assessment</span>
+            <span className="text-[10px] text-[#cbd5e1] leading-tight block">
+              Atlantic routes maintain strong redundancy while Mediterranean corridors remain highly concentrated and vulnerable.
+            </span>
+          </div>
 
-  const handleSimulate = React.useCallback(() => {
-    if (!selectedCableId) return;
-    dispatch({ type: 'SET_SIM_STATE', payload: { running: true, cableId: selectedCableId } });
-  }, [selectedCableId, dispatch]);
+          <div className="bg-[var(--background)] border border-[var(--border)] p-2.5 rounded shadow-sm">
+            <span className="text-[9px] uppercase font-bold text-[#38BDF8] tracking-widest block mb-1">Operational Outlook</span>
+            <span className="text-[10px] text-[#cbd5e1] leading-tight block">
+              {sim.running 
+                ? 'Active disruption detected. Payload shifting to adjacent networks causing elevated regional latency and bottlenecking.' 
+                : 'Current network posture remains stable with no active disruption scenarios reported.'}
+            </span>
+          </div>
+        </div>
+      </div>
 
-  const handleReset = React.useCallback(() => {
-    setSelectedCableId('');
-    dispatch({ type: 'SET_SIM_STATE', payload: { running: false, cableId: null } });
-  }, [dispatch]);
+      {/* SECTION C: Who Controls The Rail */}
+      <div className="p-5 border-b border-[var(--border)]">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">Ownership Concentration</h3>
+        <p className="text-xs text-[var(--text-muted)] mb-4">
+          Hyperscalers (Google, Meta, Microsoft, Amazon) have fundamentally shifted from leasing capacity to owning the physical rails.
+        </p>
+        <div className="h-32 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart layout="vertical" data={ownerData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+              <XAxis type="number" hide />
+              <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+              <RechartsTooltip cursor={{ fill: 'var(--border)' }} contentStyle={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', fontSize: '12px' }} />
+              <Bar dataKey="capacity" radius={[0, 4, 4, 0]}>
+                {ownerData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
 
-  const isRunning = simState.running && simState.cableId;
-  const severedCable = CABLES.find(c => c.id === simState.cableId);
+      {/* SECTION D: Filters & Operational Controls */}
+      <div className="p-5 border-b border-[var(--border)]">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">Operational Controls</h3>
+        
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="flex flex-col">
+            <label className="text-[10px] text-[var(--text-muted)] uppercase mb-1">Region</label>
+            <select value={filters.region} onChange={(e) => handleFilterChange('region', e.target.value)} className="bg-[var(--background)] border border-[var(--border)] rounded text-xs p-2 focus:outline-none focus:border-[var(--primary)]">
+              <option value="all">Global</option>
+              <option value="transatlantic">Trans-Atlantic</option>
+              <option value="transpacific">Trans-Pacific</option>
+              <option value="emea">EMEA</option>
+            </select>
+          </div>
+          <div className="flex flex-col">
+            <label className="text-[10px] text-[var(--text-muted)] uppercase mb-1">Capacity</label>
+            <select value={filters.capacity} onChange={(e) => handleFilterChange('capacity', e.target.value)} className="bg-[var(--background)] border border-[var(--border)] rounded text-xs p-2 focus:outline-none focus:border-[var(--primary)]">
+              <option value="all">All</option>
+              <option value=">100">&gt;100 Tbps</option>
+              <option value="10-100">10-100 Tbps</option>
+              <option value="<10">&lt;10 Tbps</option>
+            </select>
+          </div>
+        </div>
 
-  const affectedLPs = isRunning && severedCable 
-    ? LANDING_POINTS.filter(lp => severedCable.landingPoints.includes(lp.id))
-    : [];
-
-  const reroutes = isRunning && severedCable
-    ? CABLES.filter(c => c.region === severedCable.region && c.status === 'active' && c.id !== severedCable.id)
-    : [];
-
-  // Critical (<40% redundancy proxy):
-  const severity = reroutes.length <= 1 ? 'critical' : 'moderate';
-  const severityColor = severity === 'critical' ? 'var(--accent-red)' : 'var(--accent-amber)';
-
-  return (
-    <>
-      <Panel title="FAILURE SIMULATION">
-        <div className="flex flex-col gap-3 mt-2">
-          <select 
-            value={selectedCableId}
-            onChange={handleDropdownChange}
-            className="w-full bg-[var(--depth-3)] border border-[var(--border-subtle)] text-[var(--text-primary)] rounded-[6px] text-[12px] p-2 focus:outline-none focus:border-[var(--border-default)]"
-          >
-            <option value="">Select a cable to cut...</option>
-            {simCables.map(c => (
-              <option key={c.id} value={c.id}>{c.name} — {c.capacityTbps}T ({c.status})</option>
-            ))}
-          </select>
+        <div className="bg-[var(--background)] p-4 border border-[var(--border)] rounded-md border-l-2 border-l-[var(--accent-amber)]">
+          <h4 className="text-xs font-semibold mb-2">Failure Simulation</h4>
+          <p className="text-[10px] text-[var(--text-muted)] mb-3">Analyze network rerouting capacity and physical bottlenecks upon simulated cable cuts.</p>
           
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex flex-col mb-3">
+            <label className="text-[10px] text-[var(--text-muted)] uppercase mb-1">Select Cable</label>
+            <select 
+              value={selectedCable || ''} 
+              onChange={(e) => dispatch({ type: 'SET_SELECTED_CABLE', payload: e.target.value || null })}
+              className="bg-[var(--surface)] border border-[var(--border)] rounded text-xs p-2 focus:outline-none focus:border-[var(--primary)]"
+            >
+              <option value="">-- Choose target infrastructure --</option>
+              {filteredCables.filter(c => c.status !== 'planned').map(cable => (
+                <option key={cable.id} value={cable.id}>{cable.name} ({cable.capacityTbps} Tbps)</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex gap-2">
             <button 
               onClick={handleSimulate}
-              disabled={!selectedCableId}
-              className="px-3 py-1.5 text-[11px] text-[#ef4444] bg-transparent hover:bg-[rgba(239,68,68,0.1)] border border-[#ef4444] rounded-[5px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!selectedCable || sim.running}
+              className="flex-1 bg-[var(--border)] hover:bg-[var(--primary)] hover:text-black disabled:opacity-50 text-xs py-2 rounded transition-colors"
             >
               Simulate Cut
             </button>
             <button 
-              onClick={handleReset}
-              className="px-3 py-1.5 text-[11px] text-[var(--text-primary)] bg-transparent border border-[var(--border-default)] rounded-[5px] hover:bg-[var(--depth-3)] transition-colors"
+              onClick={handleResetSim}
+              disabled={!sim.running}
+              className="flex-1 bg-transparent border border-[var(--border)] hover:bg-[var(--border)] disabled:opacity-50 text-xs py-2 rounded transition-colors"
             >
               Reset
             </button>
           </div>
-
-          <div className="mt-2 text-[11px] bg-[var(--depth-0)] border border-[var(--border-subtle)] rounded-[6px] p-3 min-h-[55px] flex flex-col justify-center">
-            {!isRunning ? (
-              <span className="text-[var(--text-muted)]">Select a cable and click Simulate Cut...</span>
-            ) : (
-              <div className="flex flex-col gap-0.5">
-                <span>
-                  <strong style={{ color: 'var(--accent-red)' }}>{severedCable?.name}</strong> severed.
-                </span>
-                <span className="text-[var(--text-muted)]">
-                  -{severedCable?.capacityTbps} Tbps offline capacity.
-                </span>
-                <span style={{ color: severityColor }} className="font-semibold uppercase text-[10px] mt-1">
-                  {severity} Warning: {severity === 'critical' ? 'Severe regional exposure' : 'Capacity diverted'}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      </Panel>
-      <div className="w-[1px] bg-[var(--border-subtle)] shrink-0" />
-      
-      <Panel title="AFFECTED LANDING POINTS">
-        <div className="mt-2 text-[12px] overflow-y-auto max-h-[140px] sidebar-scroll pr-2">
-          {!isRunning ? (
-            <span className="text-[var(--text-muted)]">—</span>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {affectedLPs.map(lp => {
-                const c = COUNTRIES.find(x => x.id === lp.countryId);
-                return (
-                  <li key={lp.id} className="text-[var(--text-primary)] truncate">
-                    <span className="text-[var(--accent-blue)] mr-1">•</span> {lp.name} ({c?.code})
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-      </Panel>
-      <div className="w-[1px] bg-[var(--border-subtle)] shrink-0" />
-      
-      <Panel title="REROUTE OPTIONS">
-        <div className="mt-2 text-[12px] overflow-y-auto max-h-[140px] sidebar-scroll pr-2">
-          {!isRunning ? (
-            <span className="text-[var(--text-muted)]">—</span>
-          ) : reroutes.length > 0 ? (
-            <ul className="flex flex-col gap-2">
-              {reroutes.map(c => (
-                <li key={c.id} className="text-[var(--text-primary)]">
-                  <span className="text-[var(--accent-green)] mr-1">•</span> {c.name} — {c.capacityTbps}T <span className="text-[var(--text-muted)] block pl-3 text-[10px]">(est. 82% capacity headroom)</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <span style={{ color: 'var(--accent-red)' }}>No active alternate routes in this region.</span>
-          )}
-        </div>
-      </Panel>
-    </>
-  );
-}
-</file>
-
-<file path="components/layout/Sidebar.tsx">
-"use client";
-
-import React, { useEffect, useState } from 'react';
-import { useAppState } from '@/components/providers/AppStateProvider';
-import { CABLES } from '@/lib/constants';
-import { getFilteredCables, redundancyColor } from '@/lib/utils';
-import { cn } from '@/lib/utils';
-
-export function Sidebar() {
-  const { state, dispatch } = useAppState();
-  const { filters, selectedCable } = state;
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const filteredCables = getFilteredCables(CABLES, filters);
-
-  const handleFilterChange = React.useCallback((key: keyof typeof state.filters, value: string) => {
-    dispatch({ type: 'SET_FILTERS', payload: { [key]: value } });
-  }, [dispatch]);
-
-  const handleClearFilters = () => {
-    dispatch({ type: 'SET_FILTERS', payload: { region: 'all', capacity: 'all', status: 'all' } });
-  };
-
-  const handleSelectCable = (id: string) => {
-    if (selectedCable === id) {
-      dispatch({ type: 'SET_SELECTED_CABLE', payload: null });
-    } else {
-      dispatch({ type: 'SET_SELECTED_CABLE', payload: id });
-    }
-  };
-
-  return (
-    <aside className="w-[252px] shrink-0 border-r border-[var(--border-subtle)] bg-[var(--depth-2)] overflow-y-auto overflow-x-hidden sidebar-scroll flex flex-col">
-      
-      {/* SECTION 1 — FILTERS */}
-      <div className="flex flex-col px-[14px] pt-[14px] pb-[6px] border-b border-[var(--border-subtle)] shrink-0">
-        <h2 className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.1em] mb-3">Filters</h2>
-        
-        <div className="flex flex-col gap-3">
-          {/* Region */}
-          <div className="flex flex-col">
-            <label className="text-[10px] text-[var(--text-muted)] font-medium mb-[3px]">Region</label>
-            <select 
-              value={filters.region}
-              onChange={(e) => handleFilterChange('region', e.target.value)}
-              className="w-full bg-[var(--depth-3)] border border-[var(--border-subtle)] text-[var(--text-primary)] rounded-[6px] text-[12px] p-1.5 focus:outline-none focus:border-[var(--border-default)]"
-            >
-              <option value="all">All</option>
-              <option value="transatlantic">Trans-Atlantic</option>
-              <option value="transpacific">Trans-Pacific</option>
-              <option value="indian-ocean">Indian Ocean</option>
-            </select>
-          </div>
-
-          {/* Capacity */}
-          <div className="flex flex-col">
-            <label className="text-[10px] text-[var(--text-muted)] font-medium mb-[3px]">Capacity</label>
-            <select 
-              value={filters.capacity}
-              onChange={(e) => handleFilterChange('capacity', e.target.value)}
-              className="w-full bg-[var(--depth-3)] border border-[var(--border-subtle)] text-[var(--text-primary)] rounded-[6px] text-[12px] p-1.5 focus:outline-none focus:border-[var(--border-default)]"
-            >
-              <option value="all">All</option>
-              <option value=">100">&gt;100 Tbps</option>
-              <option value="10-100">10–100 Tbps</option>
-              <option value="<10">&lt;10 Tbps</option>
-            </select>
-          </div>
-
-          {/* Status */}
-          <div className="flex flex-col">
-            <label className="text-[10px] text-[var(--text-muted)] font-medium mb-[3px]">Status</label>
-            <select 
-              value={filters.status}
-              onChange={(e) => handleFilterChange('status', e.target.value)}
-              className="w-full bg-[var(--depth-3)] border border-[var(--border-subtle)] text-[var(--text-primary)] rounded-[6px] text-[12px] p-1.5 focus:outline-none focus:border-[var(--border-default)]"
-            >
-              <option value="all">All</option>
-              <option value="active">Active</option>
-              <option value="planned">Planned</option>
-              <option value="under_repair">Degraded</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* SECTION 2 — CABLE LIST */}
-      <div className="flex-1 flex flex-col p-3 shrink-0">
-        <div className="flex items-baseline justify-between mb-2 px-1">
-          <h2 className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.1em]">Cables</h2>
-          <span className="text-[11px] text-[var(--text-ghost)] font-normal normal-case tracking-normal">
-            {filteredCables.length} of {CABLES.length}
-          </span>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          {filteredCables.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-6">
-              <p className="text-[12px] text-[var(--text-muted)] text-center mb-2">No cables match the active filters.</p>
-              <button onClick={handleClearFilters} className="text-[12px] text-[var(--accent-blue)] hover:underline">
-                Clear filters
-              </button>
+          {sim.running && selectedCable && (
+            <div className="mt-3 p-2 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] rounded text-[10px] text-[var(--accent-red)]">
+              CRITICAL: Active simulation running. {CABLES.find(c => c.id === selectedCable)?.capacityTbps} Tbps rerouted to adjacent infrastructure.
             </div>
-          ) : (
-            filteredCables.map(cable => {
-              const isSelected = selectedCable === cable.id;
-              const redundancyScore = cable.landingPoints.length;
-              const barColor = redundancyColor(redundancyScore);
-              const fillWidth = Math.min(100, (redundancyScore / 4) * 100); // Demo width mapping
-
-              return (
-                <div
-                  key={cable.id}
-                  onClick={() => handleSelectCable(cable.id)}
-                  className={cn(
-                    "flex flex-col px-2 py-2 cursor-pointer transition-colors relative rounded-[7px] hover:bg-[var(--depth-3)]",
-                    isSelected ? "bg-[var(--depth-3)]" : ""
-                  )}
-                >
-                  {isSelected && (
-                    <div 
-                      className="absolute left-0 top-0 bottom-0 w-[2px] rounded-l-[7px]" 
-                      style={{ backgroundColor: cable.color }} 
-                    />
-                  )}
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <div className="w-[8px] h-[8px] rounded-full shrink-0" style={{ backgroundColor: cable.color }} />
-                    <span className="text-[12px] text-[var(--text-primary)] font-medium truncate flex-1">{cable.name}</span>
-                    <span className="text-[10px] text-[var(--text-muted)] shrink-0">{cable.capacityTbps} Tbps</span>
-                  </div>
-                  <div className="w-full h-[3px] bg-[var(--depth-4)] rounded-full overflow-hidden ml-[10px] max-w-[calc(100%-10px)]">
-                    <div 
-                      className="h-full transition-all duration-500 ease-out rounded-full" 
-                      style={{ 
-                        width: mounted ? `${fillWidth}%` : '0%', 
-                        backgroundColor: barColor 
-                      }} 
-                    />
-                  </div>
-                </div>
-              );
-            })
           )}
         </div>
       </div>
 
-      {/* SECTION 3 — GLOBAL STATS */}
-      <div className="flex flex-col gap-2 p-3 border-t border-[var(--border-subtle)] shrink-0">
-        <div className="bg-[var(--depth-3)] border border-[var(--border-subtle)] rounded-[8px] p-3 flex flex-col">
-          <span className="text-[20px] font-bold text-[var(--text-primary)] tracking-[-0.02em] leading-none">486</span>
-          <span className="text-[11px] text-[var(--text-muted)] mt-[3px]">Active submarine cables</span>
-          <span className="text-[9px] text-[var(--text-ghost)] mt-[2px]">TeleGeography 2024</span>
-        </div>
-
-        <div className="bg-[var(--depth-3)] border border-[var(--border-subtle)] rounded-[8px] p-3 flex flex-col">
-          <span className="text-[20px] font-bold text-[var(--text-primary)] tracking-[-0.02em] leading-none">1.4 Pbps</span>
-          <span className="text-[11px] text-[var(--text-muted)] mt-[3px]">Total lit capacity</span>
-          <span className="text-[9px] text-[var(--text-ghost)] mt-[2px]">All ocean basins</span>
-        </div>
-
-        <div className="bg-[var(--depth-3)] border border-[var(--border-subtle)] rounded-[8px] p-3 flex flex-col">
-          <span className="text-[20px] font-bold text-[var(--text-primary)] tracking-[-0.02em] leading-none">95%</span>
-          <span className="text-[11px] text-[var(--text-muted)] mt-[3px]">Of global internet traffic</span>
-          <span className="text-[9px] text-[var(--text-ghost)] mt-[2px]">Carried by submarine cables</span>
-        </div>
-      </div>
-
-    </aside>
-  );
-}
-</file>
-
-<file path="components/layout/Topbar.tsx">
-"use client";
-
-import React from 'react';
-import { useAppState } from '@/components/providers/AppStateProvider';
-import { downloadData } from '@/lib/download';
-import { cn } from '@/lib/utils';
-
-export function Topbar() {
-  const { state, dispatch } = useAppState();
-
-  const tabs = [
-    { id: 'map', label: 'Cable Map' },
-    { id: 'country', label: 'Country View' },
-    { id: 'sim', label: 'Failure Sim' }
-  ] as const;
-
-  const handleTabChange = React.useCallback((tabId: string) => {
-    dispatch({ type: 'SET_ACTIVE_TAB', payload: tabId as any });
-  }, [dispatch]);
-
-  return (
-    <header className="h-[48px] bg-[var(--depth-2)] border-b border-[var(--border-subtle)] flex items-center justify-between px-4 shrink-0 whitespace-nowrap">
-      
-      {/* LOGO SECTION */}
-      <div className="flex items-center gap-3">
-        <svg 
-          viewBox="0 0 28 28" 
-          className="w-[28px] h-[28px] text-[var(--accent-blue)]"
-          fill="none" 
-          stroke="currentColor" 
-          strokeWidth="1.5"
+      {/* SECTION E: Data & Export */}
+      <div className="p-5 mt-auto">
+        <button 
+          onClick={handleDownload}
+          className="w-full bg-transparent border border-[var(--border)] hover:bg-[var(--border)] text-xs py-2 rounded transition-colors"
         >
-          <circle cx="14" cy="14" r="12" />
-          <circle cx="14" cy="14" r="8" />
-          <circle cx="14" cy="14" r="4" fill="currentColor" />
-          <path d="M14 2 L14 6 M14 22 L14 26 M2 14 L6 14 M22 14 L26 14" />
-        </svg>
-        <div className="flex flex-col justify-center">
-          <span className="text-[9px] text-[var(--text-muted)] uppercase tracking-[0.1em] leading-none mb-[2px]">
-            Real Rails Intelligence Library
-          </span>
-          <span className="text-[13px] text-[var(--text-primary)] font-semibold tracking-[-0.01em] leading-none">
-            Submarine Cable Dependency Map
-          </span>
-        </div>
+          Download Intelligence Data (JSON)
+        </button>
       </div>
-
-      {/* TAB GROUP */}
-      <div className="flex items-center bg-[var(--depth-3)] rounded-[8px] p-[3px] gap-1">
-        {tabs.map((tab) => {
-          const isActive = state.activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => handleTabChange(tab.id)}
-              className={cn(
-                "px-3 py-1 text-[12px] font-medium rounded-[5px] transition-colors",
-                isActive 
-                  ? "bg-[var(--depth-4)] text-[var(--text-primary)] shadow-[inset_0_0_0_1px_var(--border-default)]" 
-                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-              )}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ACTIONS & BADGES */}
-      <div className="flex items-center gap-4">
-        
-        {/* DATA SOURCE BADGES */}
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-semibold tracking-[0.04em] px-2 py-0.5 rounded-[4px] bg-[rgba(34,197,94,0.10)] text-[#22c55e] border border-[rgba(34,197,94,0.18)]">
-            Topology: TeleGeography
-          </span>
-          <span className="text-[10px] font-semibold tracking-[0.04em] px-2 py-0.5 rounded-[4px] bg-[rgba(245,158,11,0.10)] text-[#f59e0b] border border-[rgba(245,158,11,0.18)]">
-            Events: Synthetic
-          </span>
-        </div>
-
-        <div className="w-[1px] h-4 bg-[var(--border-subtle)] mx-1" />
-
-        {/* ACTION BUTTONS */}
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={() => dispatch({ type: 'SET_PANEL', payload: 'why' })}
-            className="text-[11px] text-[var(--text-primary)] bg-transparent hover:bg-[var(--depth-4)] border border-[var(--border-default)] rounded-[6px] px-[12px] py-[5px] transition-colors"
-          >
-            Why this matters
-          </button>
-          <button 
-            onClick={() => dispatch({ type: 'SET_PANEL', payload: 'who' })}
-            className="text-[11px] text-[var(--text-primary)] bg-transparent hover:bg-[var(--depth-4)] border border-[var(--border-default)] rounded-[6px] px-[12px] py-[5px] transition-colors"
-          >
-            Who controls the rail
-          </button>
-          <button 
-            onClick={downloadData}
-            className="text-[11px] text-[var(--text-primary)] bg-transparent hover:bg-[var(--depth-4)] border border-[var(--border-default)] rounded-[6px] px-[12px] py-[5px] transition-colors flex items-center gap-1"
-          >
-            <span>↓</span> Sample data
-          </button>
-        </div>
-
-      </div>
-
-    </header>
-  );
-}
-</file>
-
-<file path="components/map/CableMap.tsx">
-"use client";
-
-import React, { useMemo, useState, useRef } from 'react';
-import { useAppState } from '@/components/providers/AppStateProvider';
-import { CABLES } from '@/lib/constants';
-import { getFilteredCables } from '@/lib/utils';
-import { CableRoutes } from './CableRoutes';
-import { LandingPoints } from './LandingPoints';
-import { OutageMarker } from './OutageMarker';
-import { MapTooltip, TooltipState } from './MapTooltip';
-import { WorldMapPaths } from './WorldMapPaths';
-
-export function projectCoordinates(lon: number, lat: number): [number, number] {
-  const x = (lon + 180) * (900 / 360);
-  const y = (90 - lat) * (400 / 180);
-  return [x, y];
-}
-
-export function CableMap() {
-  const { state } = useAppState();
-  const { filters, sim } = state;
-  const containerRef = useRef<HTMLDivElement>(null);
-  
-  const [tooltip, setTooltip] = useState<TooltipState>({
-    show: false,
-    x: 0,
-    y: 0,
-    type: null,
-    data: null
-  });
-
-  const filteredCables = useMemo(() => getFilteredCables(CABLES, filters), [filters]);
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!tooltip.show || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    let x = e.clientX - rect.left;
-    let y = e.clientY - rect.top;
-    
-    // EDGE FLIP LOGIC
-    if (x + 220 > rect.width) x = x - 230;
-    if (y + 180 > rect.height) y = y - 180;
-    
-    x = Math.max(4, x);
-    y = Math.max(4, y);
-    
-    setTooltip(prev => ({ ...prev, x, y }));
-  };
-
-  return (
-    <div 
-      ref={containerRef}
-      className="flex-1 relative overflow-hidden" 
-      style={{ background: 'radial-gradient(ellipse at 40% 45%, #0d1b35 0%, #070f1e 100%)' }}
-      onMouseMove={handleMouseMove}
-    >
-      <svg viewBox="0 0 900 400" preserveAspectRatio="xMidYMid meet" className="w-full h-full block">
-        <defs>
-          <filter id="cableGlow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="3" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-          <filter id="lpGlow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="2" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-
-        <WorldMapPaths />
-
-        <CableRoutes 
-          cables={filteredCables} 
-          setTooltip={setTooltip} 
-        />
-        
-        <LandingPoints 
-          cables={filteredCables}
-          setTooltip={setTooltip} 
-        />
-
-        {sim.running && sim.cableId && (
-          <OutageMarker cableId={sim.cableId} />
-        )}
-
-        {/* Legend */}
-        <g transform="translate(16, 365)">
-          <rect width="180" height="24" fill="#0f1629" fillOpacity="0.9" rx="6" stroke="#1e2d4a" />
-          
-          <line x1="10" y1="12" x2="30" y2="12" stroke="#3b82f6" strokeWidth="2" />
-          <text x="35" y="15" fontSize="10" fill="var(--text-muted)">Active</text>
-          
-          <line x1="75" y1="12" x2="95" y2="12" stroke="#14b8a6" strokeWidth="2" strokeDasharray="4 2" />
-          <text x="100" y="15" fontSize="10" fill="var(--text-muted)">Planned</text>
-        </g>
-        
-        <g transform="translate(16, 335)">
-          <rect width="180" height="24" fill="#0f1629" fillOpacity="0.9" rx="6" stroke="#1e2d4a" />
-          
-          <line x1="10" y1="12" x2="30" y2="12" stroke="#ef4444" strokeWidth="2" strokeDasharray="3 2" />
-          <text x="35" y="15" fontSize="10" fill="var(--text-muted)">Degraded</text>
-
-          <circle cx="95" cy="12" r="3" fill="#101e38" stroke="#1e3a5f" strokeWidth="1" />
-          <circle cx="108" cy="12" r="4" fill="#101e38" stroke="#60a5fa" strokeWidth="1" />
-          <text x="118" y="15" fontSize="10" fill="var(--text-muted)">Nodes</text>
-        </g>
-      </svg>
-      
-      <MapTooltip tooltip={tooltip} />
     </div>
   );
 }
 </file>
 
-<file path="components/map/CableRoutes.tsx">
-import React from 'react';
-import { Cable } from '@/lib/types';
+<file path="components/map/LeafletCableMap.tsx">
+"use client";
+
+import React, { useMemo, useEffect, useRef, useState } from 'react';
+import { MapContainer, TileLayer, GeoJSON, Marker, useMap, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { useAppState } from '@/components/providers/AppStateProvider';
-import { projectCoordinates } from './CableMap';
+import { CABLES, LANDING_POINTS } from '@/lib/constants';
+import { getFilteredCables } from '@/lib/utils';
+import { cablesToGeoJSON, landingPointsToGeoJSON } from '@/lib/geojson';
 
-export function CableRoutes({ cables, setTooltip }: any) {
-  const { state, dispatch } = useAppState();
+// ─── Map bounds: single world instance, no infinite scroll ───────────────────
+// Network geographic extent (all landing points + cable arcs):
+//   lng: -124° (Oregon) → +137° (Japan)   lat: -34° (S.Africa) → +52° (Pacific arc)
+// WORLD_BOUNDS wraps the whole globe, used by TileLayer to prevent tile repetition.
+// NETWORK_BOUNDS is used for fitBounds on initial load.
+// MAX_BOUNDS adds generous padding so users can still pan/explore freely,
+// but cannot scroll infinitely into empty repeated world copies.
+const WORLD_BOUNDS    = L.latLngBounds(L.latLng(-85, -180), L.latLng(85, 180));
+const NETWORK_BOUNDS  = L.latLngBounds(L.latLng(-42, -135), L.latLng(58, 150));
+const MAX_BOUNDS      = L.latLngBounds(L.latLng(-80, -200), L.latLng(82, 210));
 
-  const handleMouseEnter = (cable: Cable, e: React.MouseEvent) => {
-    setTooltip((prev: any) => ({ ...prev, show: true, type: 'cable', data: cable }));
-  };
-  const handleMouseLeave = () => {
-    setTooltip((prev: any) => ({ ...prev, show: false }));
-  };
+// ─── Tier config ─────────────────────────────────────────────────────────────
+const TIER_CONFIG = {
+  1: { radius: 8,  strokeWidth: 2,   fillColor: '#0f1d38', strokeColor: '#38BDF8' },
+  2: { radius: 5,  strokeWidth: 1.5, fillColor: '#0f1d38', strokeColor: '#818CF8' },
+  3: { radius: 3,  strokeWidth: 1,   fillColor: '#0B1117', strokeColor: '#3d5a78' },
+} as const;
 
-  const handleSelect = React.useCallback((cableId: string, isSelected: boolean) => {
-    dispatch({ type: 'SET_SELECTED_CABLE', payload: isSelected ? null : cableId });
-  }, [dispatch]);
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
+/** Build a DivIcon for Tier 1 Global Hub nodes (supports CSS animation) */
+function buildTier1Icon(isAffected: boolean, name: string): L.DivIcon {
+  const color = isAffected ? '#ef4444' : '#38BDF8';
+  const size = 16; // px — outer container
+  const dot  = 6;
+
+  return L.divIcon({
+    className: '',
+    iconSize:   [size, size],
+    iconAnchor: [size / 2, size / 2],
+    html: `
+      <div style="
+        position: relative;
+        width: ${size}px;
+        height: ${size}px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      ">
+        <div class="hub-pulse-ring" style="width: ${size}px; height: ${size}px; top: 0; left: 0; border-color: ${color};"></div>
+        <div class="hub-pulse-ring ring-2" style="width: ${size}px; height: ${size}px; top: 0; left: 0; border-color: ${color};"></div>
+        <div style="width: ${dot}px; height: ${dot}px; border-radius: 50%; background: ${color}; box-shadow: 0 0 6px ${color}; position: relative; z-index: 2;"></div>
+        <div class="lp-permanent-label">
+          ${name}
+          <span>Global Internet Hub</span>
+        </div>
+      </div>
+    `,
+  });
+}
+
+/** Build a DivIcon for Tier 2 Regional Hubs (conditional label based on zoom) */
+function buildTier2Icon(isAffected: boolean, name: string, showLabel: boolean): L.DivIcon {
+  const color = isAffected ? '#ef4444' : '#818CF8';
+  const dot = 10; // 5px radius
+  
+  return L.divIcon({
+    className: '',
+    iconSize:   [dot, dot],
+    iconAnchor: [dot / 2, dot / 2],
+    html: `
+      <div style="position: relative; width: ${dot}px; height: ${dot}px; display: flex; align-items: center; justify-content: center;">
+        <div style="width: ${dot}px; height: ${dot}px; border-radius: 50%; background: #0f1d38; border: 1.5px solid ${color}; position: relative; z-index: 2;"></div>
+        ${showLabel ? `
+        <div class="lp-permanent-label" style="margin-left: 12px; margin-top: -6px;">
+          ${name}
+          <span style="color: #818CF8;">Regional Hub</span>
+        </div>
+        ` : ''}
+      </div>
+    `,
+  });
+}
+
+// ─── Sub-component: fits map to cable network, enforces bounds on load ───────
+function MapInitializer() {
+  const map = useMap();
+  useEffect(() => {
+    // Fit the viewport to the cable network on first render
+    map.fitBounds(NETWORK_BOUNDS, { padding: [24, 24], animate: false });
+    // Enforce strict bounds — viscosity=1 means map snaps back instantly
+    map.setMaxBounds(MAX_BOUNDS);
+    map.options.maxBoundsViscosity = 1.0;
+    // Ensure size is computed correctly inside the flex container
+    setTimeout(() => map.invalidateSize(), 80);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
+
+interface VisibleLayers {
+  cables: boolean;
+  landingPoints: boolean;
+  ownership: boolean;
+  risk: boolean;
+  capacity: boolean;
+}
+
+// ─── Sub-component: Curated Labels ────────────────────────────────────────────
+const CURATED_LABELS = [
+  { name: 'North Atlantic Ocean', lat: 35, lng: -45, type: 'ocean' },
+  { name: 'South Atlantic Ocean', lat: -20, lng: -15, type: 'ocean' },
+  { name: 'North Pacific Ocean', lat: 30, lng: 160, type: 'ocean' },
+  { name: 'South Pacific Ocean', lat: -20, lng: -130, type: 'ocean' },
+  { name: 'Indian Ocean', lat: -10, lng: 80, type: 'ocean' },
+  { name: 'North America', lat: 45, lng: -100, type: 'continent' },
+  { name: 'South America', lat: -15, lng: -60, type: 'continent' },
+  { name: 'Europe', lat: 50, lng: 15, type: 'continent' },
+  { name: 'Africa', lat: 10, lng: 20, type: 'continent' },
+  { name: 'Asia', lat: 45, lng: 90, type: 'continent' }
+];
+
+function CuratedLabelsLayer() {
   return (
-    <g>
-      {/* Glow Layer (Rendered First) */}
-      {cables.map((cable: Cable) => {
-        const points = cable.path.map(p => projectCoordinates(p[0], p[1]).join(',')).join(' ');
+    <>
+      {CURATED_LABELS.map((label, i) => {
+        const style = label.type === 'ocean' 
+          ? 'color: rgba(148, 163, 184, 0.35); font-size: 13px; font-weight: 500; font-style: italic; letter-spacing: 2px; text-transform: uppercase; white-space: nowrap; transform: translate(-50%, -50%); pointer-events: none;'
+          : 'color: rgba(71, 85, 105, 0.45); font-size: 16px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; white-space: nowrap; transform: translate(-50%, -50%); pointer-events: none;';
+        
         return (
-          <polyline 
-            key={`glow-${cable.id}`}
-            points={points}
-            fill="none"
-            stroke={cable.color}
-            strokeWidth="8"
-            opacity="0.08"
-            filter="url(#cableGlow)"
+          <Marker
+            key={i}
+            position={[label.lat, label.lng]}
+            icon={L.divIcon({
+              className: 'curated-label-icon',
+              html: `<div style="${style}">${label.name}</div>`,
+              iconSize: [0, 0]
+            })}
+            interactive={false}
           />
         );
       })}
-
-      {/* Line Layer */}
-      {cables.map((cable: Cable) => {
-        const points = cable.path.map(p => projectCoordinates(p[0], p[1]).join(',')).join(' ');
-        const isSelected = state.selectedCable === cable.id;
-        const opacity = isSelected ? 1 : (state.selectedCable ? 0.12 : 0.75);
-        const strokeWidth = isSelected ? 3 : 1.5;
-        const dashArray = cable.status === 'planned' ? '6 4' : cable.status === 'under_repair' ? '3 2' : 'none';
-
-        return (
-          <g key={`line-${cable.id}`}>
-            {isSelected && (
-              <polyline
-                points={points}
-                fill="none"
-                stroke={cable.color}
-                strokeWidth="10"
-                opacity="0.15"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            )}
-            <polyline
-              points={points}
-              fill="none"
-              stroke={cable.status === 'under_repair' ? '#ef4444' : cable.color}
-              strokeWidth={strokeWidth}
-              opacity={opacity}
-              strokeDasharray={dashArray}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              onMouseEnter={(e) => handleMouseEnter(cable, e)}
-              onMouseLeave={handleMouseLeave}
-              onClick={() => handleSelect(cable.id, isSelected)}
-              className="cursor-pointer"
-            />
-            {/* Invisible thicker line for easier hit testing */}
-            <polyline
-              points={points}
-              fill="none"
-              stroke="transparent"
-              strokeWidth="15"
-              onMouseEnter={(e) => handleMouseEnter(cable, e)}
-              onMouseLeave={handleMouseLeave}
-              onClick={() => handleSelect(cable.id, isSelected)}
-              className="cursor-pointer"
-            />
-          </g>
-        );
-      })}
-    </g>
+    </>
   );
 }
-</file>
 
-<file path="components/map/LandingPoints.tsx">
-import React from 'react';
-import { LandingPoint, Cable } from '@/lib/types';
-import { LANDING_POINTS } from '@/lib/constants';
-import { projectCoordinates } from './CableMap';
+// ─── Sub-component: Strategic Chokepoints ───────────────────────────────────
+const CHOKEPOINTS = [
+  { 
+    name: 'Marseille', lat: 41.5, lng: 5.5, 
+    importance: 'Critical Mediterranean Landing Hub', 
+    corridors: 6, impact: 'High' 
+  },
+  { 
+    name: 'Suez Corridor', lat: 27.5, lng: 34.0, 
+    importance: 'Primary Asia-Europe Transit Route', 
+    corridors: 14, impact: 'Critical' 
+  },
+  { 
+    name: 'Strait of Malacca', lat: 4.5, lng: 99.0, 
+    importance: 'Key Indo-Pacific Maritime Chokepoint', 
+    corridors: 9, impact: 'High' 
+  },
+  { 
+    name: 'Singapore Gateway', lat: 0.8, lng: 104.5, 
+    importance: 'Major SE Asia Aggregation Hub', 
+    corridors: 11, impact: 'Critical' 
+  },
+  { 
+    name: 'English Channel', lat: 49.5, lng: -2.5, 
+    importance: 'Primary UK-Europe Transit Route', 
+    corridors: 8, impact: 'Medium' 
+  }
+];
 
-export function LandingPoints({ cables, setTooltip }: any) {
-  const activeLpIds = new Set<string>();
-  cables.forEach((c: Cable) => {
-    c.landingPoints.forEach(lp => activeLpIds.add(lp));
-  });
-
-  const lps = LANDING_POINTS.filter(lp => activeLpIds.has(lp.id));
-
-  const handleMouseEnter = (lp: LandingPoint, e: React.MouseEvent) => {
-    setTooltip((prev: any) => ({ ...prev, show: true, type: 'lp', data: lp }));
+function ChokepointsLayer() {
+  const onEachChokepoint = (chokepoint: typeof CHOKEPOINTS[0]) => (node: any) => {
+    if (!node) return;
+    
+    const impactColor = chokepoint.impact === 'Critical' ? '#ef4444' : 
+                        chokepoint.impact === 'High' ? '#f97316' : '#f59e0b';
+    
+    node.bindTooltip(
+      `<div class="lp-tooltip" style="border-left: 2px solid #f59e0b;">
+         <div style="font-weight:bold; font-size:12px; margin-bottom:4px; color:#f59e0b; text-transform:uppercase; letter-spacing:1px;">${chokepoint.name}</div>
+         <div style="color:#94a3b8; margin-bottom:8px; font-size:10px;">${chokepoint.importance}</div>
+         <div style="display:flex; justify-content:space-between; width:160px; margin-bottom:2px;">
+           <span style="color:#94a3b8;">Connected Corridors:</span> <span style="font-weight:600; color:#e2e8f0;">${chokepoint.corridors}</span>
+         </div>
+         <div style="display:flex; justify-content:space-between; width:160px;">
+           <span style="color:#94a3b8;">Regional Impact:</span> <span style="color:${impactColor}; font-weight:600;">${chokepoint.impact}</span>
+         </div>
+       </div>`,
+      { direction: 'top', offset: [0, -6], className: '' }
+    );
   };
 
   return (
-    <g>
-      {lps.map(lp => {
-        const [x, y] = projectCoordinates(lp.coordinates[0], lp.coordinates[1]);
-        
-        // Count cables connected to this LP to determine node size
-        const cableCount = cables.filter((c: Cable) => c.landingPoints.includes(lp.id)).length;
-        
-        let r = 3;
-        let fill = '#101e38';
-        let stroke = '#1e3a5f';
-        let sw = 0.8;
-        
-        if (cableCount >= 3) {
-          r = 6;
-          stroke = '#60a5fa';
-          sw = 1.5;
-        } else if (cableCount === 2) {
-          r = 4;
-          stroke = '#3b82f6';
-          sw = 1;
-        }
+    <>
+      {CHOKEPOINTS.map((chokepoint, i) => (
+        <Marker
+          key={i}
+          position={[chokepoint.lat, chokepoint.lng]}
+          icon={L.divIcon({
+            className: '',
+            iconSize: [100, 20],
+            iconAnchor: [6, 10], // Anchor at the crosshair
+            html: `
+              <div style="display: flex; align-items: center; cursor: crosshair;">
+                <div style="width: 12px; height: 12px; border: 1.5px solid rgba(245, 158, 11, 0.4); transform: rotate(45deg); display: flex; justify-content: center; align-items: center; position: relative;">
+                  <div style="width: 2px; height: 2px; background: rgba(245, 158, 11, 0.8);"></div>
+                </div>
+                <div style="margin-left: 8px; font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; color: #f59e0b; opacity: 0.45; white-space: nowrap; pointer-events: none;">
+                  ${chokepoint.name}
+                </div>
+              </div>
+            `
+          })}
+          ref={onEachChokepoint(chokepoint)}
+        />
+      ))}
+    </>
+  );
+}
 
+// ─── Sub-component: cable GeoJSON layers (glow pass + main pass) ─────────────
+interface CableLayersProps {
+  geojsonCables: ReturnType<typeof cablesToGeoJSON>;
+  selectedCable: string | null;
+  hoveredCable: string | null;
+  simCableId: string | null;
+  visibleLayers: VisibleLayers;
+  onCableClick: (id: string) => void;
+  onCableHover: (id: string | null) => void;
+}
+
+function CableLayers({
+  geojsonCables, selectedCable, hoveredCable, simCableId, visibleLayers, onCableClick, onCableHover,
+}: CableLayersProps) {
+
+  /** GLOW layer — thicker, semi-transparent, rendered below main layer */
+  const glowStyle = (feature: any) => {
+    if (!visibleLayers.cables) return { opacity: 0, weight: 0, fillOpacity: 0 };
+    
+    const id       = feature.properties.id;
+    const isSelected  = selectedCable === id;
+    const isHovered   = hoveredCable === id;
+    const isSim       = simCableId === id;
+    const glowColor   = isSim ? 'rgba(239,68,68,0.35)' : feature.properties.glowColor || 'rgba(56,189,248,0.25)';
+
+    if (!isSelected && !isHovered) return { opacity: 0, weight: 0, fillOpacity: 0 };
+
+    return {
+      color:       glowColor,
+      weight:      isSelected ? 18 : 10,
+      opacity:     isSelected ? 0.3 : 0.2,
+      fillOpacity: 0,
+      lineCap:     'round' as const,
+      lineJoin:    'round' as const,
+    };
+  };
+
+  /** MAIN cable layer */
+  const cableStyle = (feature: any) => {
+    if (!visibleLayers.cables) return { opacity: 0, weight: 0, fillOpacity: 0 };
+    
+    const id        = feature.properties.id;
+    const isSelected  = selectedCable === id;
+    const isHovered   = hoveredCable === id;
+    const isSim       = simCableId === id;
+    const hasSelection = !!selectedCable || !!hoveredCable;
+
+    let color = feature.properties.color || '#38BDF8';
+    let weight   = 2;
+    let opacity  = 0.75;
+    
+    if (visibleLayers.ownership) {
+      // Simulate ownership coloring: Meta/Google = cyan, Telecom = amber
+      const cable = CABLES.find(c => c.id === id);
+      const isHyper = cable?.owners.some(o => ['o1', 'o2', 'o3', 'o4'].includes(o));
+      color = isHyper ? '#38BDF8' : '#f59e0b';
+    } else if (visibleLayers.risk) {
+      // Simulate risk/redundancy: >2 LPs = high redundancy (green), else low (red)
+      const lpCount = feature.properties.redundancy || 0;
+      color = lpCount > 2 ? '#22c55e' : '#ef4444';
+    }
+
+    if (isSim) {
+      color   = '#ef4444';
+      weight  = isSelected ? 5 : 3;
+      opacity = 1;
+    } else if (isSelected) {
+      weight  = 5;
+      opacity = 1;
+      if (!visibleLayers.ownership && !visibleLayers.risk) color = '#38BDF8';
+    } else if (isHovered) {
+      weight  = 3.5;
+      opacity = 0.95;
+    } else if (hasSelection) {
+      // Dim all non-selected when something is selected
+      opacity = 0.12;
+      weight  = 1.5;
+    } else if (visibleLayers.ownership || visibleLayers.risk) {
+      // Enhance visibility slightly when in an analytical layer mode
+      weight = 2.5;
+      opacity = 0.9;
+    }
+
+    return {
+      color,
+      weight,
+      opacity,
+      fillOpacity: 0,
+      lineCap:  'round' as const,
+      lineJoin: 'round' as const,
+    };
+  };
+
+  const onEachGlowFeature = (_feature: any, _layer: any) => {
+    // Glow layer is purely decorative — no interaction
+  };
+
+  const onEachCableFeature = (feature: any, layer: any) => {
+    const id = feature.properties.id;
+    layer.on({
+      click: () => onCableClick(id),
+      mouseover: () => onCableHover(id),
+      mouseout:  () => onCableHover(null),
+    });
+    // Rich tooltip
+    layer.bindTooltip(
+      `<div class="lp-tooltip">
+        <strong>${feature.properties.name}</strong><br/>
+        ${feature.properties.capacityTbps} Tbps &middot; ${feature.properties.region}
+       </div>`,
+      { sticky: true, className: '', offset: [8, 0] }
+    );
+  };
+
+  const layerKey = `${selectedCable}-${hoveredCable}-${simCableId}-${geojsonCables.features.length}-${visibleLayers.cables}-${visibleLayers.ownership}-${visibleLayers.risk}`;
+
+  return (
+    <>
+      {/* Glow pass */}
+      <GeoJSON
+        key={`glow-${layerKey}`}
+        data={geojsonCables}
+        style={glowStyle}
+        onEachFeature={onEachGlowFeature}
+      />
+      {/* Main pass */}
+      <GeoJSON
+        key={`main-${layerKey}`}
+        data={geojsonCables}
+        style={cableStyle}
+        onEachFeature={onEachCableFeature}
+      />
+    </>
+  );
+}
+
+// ─── Sub-component: Landing point markers ────────────────────────────────────
+interface LandingPointLayersProps {
+  geojsonLPs: ReturnType<typeof landingPointsToGeoJSON>;
+  simCableId: string | null;
+  affectedLPIds: Set<string>;
+  visibleLayers: VisibleLayers;
+}
+
+function LandingPointLayers({ geojsonLPs, affectedLPIds, visibleLayers }: LandingPointLayersProps) {
+  const map = useMap();
+  const [zoom, setZoom] = useState(map.getZoom());
+  
+  useMapEvents({
+    zoom: () => {
+      setZoom(map.getZoom());
+    }
+  });
+
+  if (!visibleLayers.landingPoints) return null;
+
+  const pointToLayer = (feature: any, latlng: L.LatLng) => {
+    const tier      = feature.properties.tier as 1 | 2 | 3;
+    const isAffected = affectedLPIds.has(feature.properties.id);
+    const name      = feature.properties.name;
+    const cfg       = TIER_CONFIG[tier] || TIER_CONFIG[3];
+
+    if (tier === 1) {
+      // Tier 1: Always visible label with CSS pulse
+      return L.marker(latlng, { icon: buildTier1Icon(isAffected, name) });
+    }
+    
+    if (tier === 2) {
+      // Tier 2: DivIcon with conditional label based on medium zoom (>= 4)
+      return L.marker(latlng, { icon: buildTier2Icon(isAffected, name, zoom >= 4) });
+    }
+
+    // Tier 3: canvas CircleMarker, minimal glow
+    const strokeColor = isAffected ? '#ef4444' : cfg.strokeColor;
+    return L.circleMarker(latlng, {
+      radius:      cfg.radius,
+      fillColor:   cfg.fillColor,
+      color:       strokeColor,
+      weight:      cfg.strokeWidth,
+      opacity:     1,
+      fillOpacity: 0.95,
+    });
+  };
+
+  const onEachLP = (feature: any, layer: any) => {
+    const props = feature.properties;
+    const tierLabel = props.tier === 1 ? 'Global Internet Hub' :
+                      props.tier === 2 ? 'Regional Hub' : 'Landing Station';
+                      
+    const redundancyColor = props.redundancy === 'High' ? '#22c55e' : props.redundancy === 'Medium' ? '#f59e0b' : '#ef4444';
+
+    layer.bindTooltip(
+      `<div class="lp-tooltip">
+         <div style="font-weight:bold; font-size:12px; margin-bottom:4px;">${props.name}</div>
+         <div style="color:#818CF8; margin-bottom:6px; font-size:10px; text-transform:uppercase;">${tierLabel}</div>
+         <div style="display:flex; justify-content:space-between; width:150px; margin-bottom:2px;">
+           <span style="color:#94a3b8;">Connected Cables:</span> <span style="font-weight:600;">${props.connectedCables}</span>
+         </div>
+         <div style="display:flex; justify-content:space-between; width:150px; margin-bottom:2px;">
+           <span style="color:#94a3b8;">Capacity:</span> <span style="font-weight:600;">${props.capacityTbps} Tbps</span>
+         </div>
+         <div style="display:flex; justify-content:space-between; width:150px;">
+           <span style="color:#94a3b8;">Redundancy:</span> <span style="color:${redundancyColor}; font-weight:600;">${props.redundancy}</span>
+         </div>
+       </div>`,
+      { direction: 'top', offset: [0, -6], className: '' }
+    );
+  };
+
+  return (
+    <GeoJSON
+      key={`lps-${geojsonLPs.features.length}-${Array.from(affectedLPIds).join(',')}`}
+      data={geojsonLPs}
+      pointToLayer={pointToLayer}
+      onEachFeature={onEachLP}
+    />
+  );
+}
+
+// ─── Main export ──────────────────────────────────────────────────────────────
+export default function LeafletCableMap() {
+  const { state, dispatch } = useAppState();
+  const { filters, selectedCable, sim } = state;
+
+  const [hoveredCable, setHoveredCable] = useState<string | null>(null);
+  
+  const [visibleLayers, setVisibleLayers] = useState<VisibleLayers>({
+    cables: true,
+    landingPoints: true,
+    ownership: false,
+    risk: false,
+    capacity: false
+  });
+
+  const toggleLayer = (layer: keyof VisibleLayers) => {
+    setVisibleLayers(prev => ({ ...prev, [layer]: !prev[layer] }));
+  };
+
+  const filteredCables = useMemo(() => getFilteredCables(CABLES, filters), [filters]);
+
+  const geojsonCables = useMemo(() => cablesToGeoJSON(filteredCables), [filteredCables]);
+  const geojsonLPs    = useMemo(() => {
+    const lpIds = new Set(filteredCables.flatMap(c => c.landingPoints));
+    return landingPointsToGeoJSON(LANDING_POINTS.filter(lp => lpIds.has(lp.id)), filteredCables);
+  }, [filteredCables]);
+
+  // Derive affected landing points from active simulation
+  const affectedLPIds = useMemo<Set<string>>(() => {
+    if (!sim.running || !sim.cableId) return new Set();
+    const cable = CABLES.find(c => c.id === sim.cableId);
+    return new Set(cable?.landingPoints ?? []);
+  }, [sim]);
+
+  const handleCableClick = (id: string) => {
+    dispatch({ type: 'SET_SELECTED_CABLE', payload: selectedCable === id ? null : id });
+  };
+
+  return (
+    <div className="w-full h-full relative bg-[#030712] z-0">
+      <MapContainer
+        center={[28, 10]}
+        zoom={2.4}
+        minZoom={2}
+        maxZoom={9}
+        style={{ height: '100%', width: '100%', background: '#030712' }}
+        preferCanvas={true}
+        zoomControl={false}
+        worldCopyJump={false}
+        maxBounds={MAX_BOUNDS}
+        maxBoundsViscosity={1.0}
+      >
+        {/* CartoDB Dark Matter — no authentication required */}
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>'
+          noWrap={true}
+          bounds={WORLD_BOUNDS}
+        />
+
+        <CableLayers
+          geojsonCables={geojsonCables}
+          selectedCable={selectedCable}
+          hoveredCable={hoveredCable}
+          simCableId={sim.running ? sim.cableId : null}
+          visibleLayers={visibleLayers}
+          onCableClick={handleCableClick}
+          onCableHover={setHoveredCable}
+        />
+
+        <LandingPointLayers
+          geojsonLPs={geojsonLPs}
+          simCableId={sim.running ? sim.cableId : null}
+          affectedLPIds={affectedLPIds}
+          visibleLayers={visibleLayers}
+        />
+
+        <CuratedLabelsLayer />
+        <ChokepointsLayer />
+
+        {/* Initializer runs once: fitBounds to network + enforce constraints */}
+        <MapInitializer />
+      </MapContainer>
+
+      {/* Map Tool Panel (Phase 5) */}
+      <div className="absolute top-1/2 -translate-y-1/2 left-4 z-[1000] flex flex-col gap-2 bg-[#0B1117]/90 backdrop-blur-sm border border-[#1F2937] rounded-lg p-2 shadow-xl">
+        <button className={`text-left text-xs px-3 py-2 rounded transition-colors ${visibleLayers.cables ? 'bg-[#38BDF8]/10 text-[#38BDF8]' : 'text-[#94a3b8] hover:text-gray-200'}`} onClick={() => toggleLayer('cables')}>
+          <span className="mr-2 opacity-70">≈</span> Cables
+        </button>
+        <button className={`text-left text-xs px-3 py-2 rounded transition-colors ${visibleLayers.landingPoints ? 'bg-[#38BDF8]/10 text-[#38BDF8]' : 'text-[#94a3b8] hover:text-gray-200'}`} onClick={() => toggleLayer('landingPoints')}>
+          <span className="mr-2 opacity-70">⚲</span> Landing Points
+        </button>
+        <div className="h-px w-full bg-[#1F2937] my-1"></div>
+        <button className={`text-left text-xs px-3 py-2 rounded transition-colors ${visibleLayers.ownership ? 'bg-[#818CF8]/10 text-[#818CF8]' : 'text-[#94a3b8] hover:text-gray-200'}`} onClick={() => toggleLayer('ownership')}>
+          <span className="mr-2 opacity-70">⊚</span> Ownership
+        </button>
+        <button className={`text-left text-xs px-3 py-2 rounded transition-colors ${visibleLayers.risk ? 'bg-[#22c55e]/10 text-[#22c55e]' : 'text-[#94a3b8] hover:text-gray-200'}`} onClick={() => toggleLayer('risk')}>
+          <span className="mr-2 opacity-70">⚠</span> Risk
+        </button>
+        <button className={`text-left text-xs px-3 py-2 rounded transition-colors ${visibleLayers.capacity ? 'bg-[#f59e0b]/10 text-[#f59e0b]' : 'text-[#94a3b8] hover:text-gray-200'}`} onClick={() => toggleLayer('capacity')}>
+          <span className="mr-2 opacity-70">⚡</span> Capacity
+        </button>
+      </div>
+
+      {/* Network Overview Card (Phase 4 & 8) */}
+      <div className="absolute bottom-4 left-4 z-[1000] bg-[#0B1117]/90 backdrop-blur-sm border border-[#1F2937] rounded flex flex-col p-2 shadow-xl">
+        <div className="text-[8px] font-bold text-[#64748b] uppercase tracking-widest mb-1.5 px-1 border-b border-[#1F2937]/50 pb-1">Network Status</div>
+        <div className="grid grid-cols-2 gap-y-1.5 gap-x-6 px-1">
+          <div className="flex flex-col">
+            <span className="text-[8px] text-[#64748b] uppercase font-semibold leading-none mb-0.5">Active Cables</span>
+            <span className="text-sm font-bold text-gray-200 leading-none">{filteredCables.filter(c => c.status === 'active').length}</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[8px] text-[#64748b] uppercase font-semibold leading-none mb-0.5">Landing Points</span>
+            <span className="text-sm font-bold text-gray-200 leading-none">{new Set(filteredCables.flatMap(c => c.landingPoints)).size}</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[8px] text-[#64748b] uppercase font-semibold leading-none mb-0.5">Total Capacity</span>
+            <span className="text-sm font-bold text-gray-200 leading-none">{filteredCables.reduce((sum, c) => sum + c.capacityTbps, 0)}<span className="text-[9px] font-medium text-gray-500 ml-0.5">Tbps</span></span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[8px] text-[#64748b] uppercase font-semibold leading-none mb-0.5">System Health</span>
+            <span className={`text-sm font-bold leading-none ${sim.running ? 'text-[#ef4444]' : 'text-[#38BDF8]'}`}>
+              {sim.running ? '74' : '92'}<span className="text-[9px] font-medium opacity-50 ml-0.5">/100</span>
+            </span>
+          </div>
+        </div>
+      </div>
+      
+      {/* Capacity Overlay Labels (Phase 3) */}
+      {visibleLayers.capacity && (
+        <div className="absolute top-1/4 right-1/4 z-[500] pointer-events-none">
+          <div className="bg-[#f59e0b]/10 border border-[#f59e0b]/20 text-[#f59e0b] px-3 py-1 rounded text-xs font-bold tracking-widest uppercase">
+            High Capacity Corridor
+          </div>
+        </div>
+      )}
+
+      {/* Sim badge overlay */}
+      {sim.running && sim.cableId && (() => {
+        const cable = CABLES.find(c => c.id === sim.cableId);
         return (
-          <g 
-            key={lp.id} 
-            transform={`translate(${x}, ${y})`}
-            className="cursor-pointer"
-            onMouseEnter={(e) => handleMouseEnter(lp, e)}
-            onMouseLeave={() => setTooltip((prev: any) => ({ ...prev, show: false }))}
-          >
-            {/* Outer ring animation */}
-            <circle 
-              r={r + 4} 
-              fill="none" 
-              stroke="#3b82f6" 
-              strokeWidth="0.8" 
-              opacity="0.3"
-            >
-              <animate attributeName="r" values={`${r+2};${r+6};${r+2}`} dur="3s" repeatCount="indefinite" />
-              <animate attributeName="opacity" values="0.3;0.6;0.3" dur="3s" repeatCount="indefinite" />
-            </circle>
-            
-            {/* Inner dot */}
-            <circle r={r} fill={fill} stroke={stroke} strokeWidth={sw} />
-          </g>
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] px-4 py-2 rounded-md border border-[#ef4444]/40 bg-[#030712]/90 backdrop-blur-sm text-xs text-[#ef4444] font-medium tracking-wide animate-fade-in shadow-lg shadow-red-900/20">
+            ⚠ SIMULATED CUT — {cable?.name} — {cable?.capacityTbps} Tbps offline
+          </div>
         );
-      })}
-    </g>
+      })()}
+    </div>
   );
 }
 </file>
@@ -1292,309 +1350,6 @@ export function MapTooltip({ tooltip }: { tooltip: TooltipState }) {
   }
 
   return null;
-}
-</file>
-
-<file path="components/map/OutageMarker.tsx">
-import React from 'react';
-import { CABLES } from '@/lib/constants';
-import { projectCoordinates } from './CableMap';
-
-export function OutageMarker({ cableId }: { cableId: string }) {
-  const cable = CABLES.find(c => c.id === cableId);
-  if (!cable || cable.path.length < 2) return null;
-
-  // Compute midpoint
-  const midIndex = Math.floor(cable.path.length / 2);
-  const p1 = cable.path[midIndex - 1];
-  const p2 = cable.path[midIndex];
-  
-  const midLon = (p1[0] + p2[0]) / 2;
-  const midLat = (p1[1] + p2[1]) / 2;
-  const [x, y] = projectCoordinates(midLon, midLat);
-
-  return (
-    <g transform={`translate(${x}, ${y})`}>
-      {/* Outer Pulse */}
-      <circle r="16" fill="rgba(239,68,68,0.12)" stroke="#ef4444" strokeWidth="1.5">
-        <animate attributeName="r" values="14;18;14" dur="1.5s" repeatCount="indefinite" />
-        <animate attributeName="opacity" values="0.8;1;0.8" dur="1.5s" repeatCount="indefinite" />
-      </circle>
-      
-      {/* Inner X mark */}
-      <line x1="-8" y1="-8" x2="8" y2="8" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
-      <line x1="-8" y1="8" x2="8" y2="-8" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
-    </g>
-  );
-}
-</file>
-
-<file path="components/map/WorldMapPaths.tsx">
-import React from 'react';
-
-export function WorldMapPaths() {
-  return (
-    <g fill="#16233d" stroke="#1e2d4a" strokeWidth="0.5">
-      {/* North America */}
-      <path d="M120,40 L300,40 L320,120 L280,160 L240,160 L180,100 Z" />
-      {/* South America */}
-      <path d="M280,170 L380,200 L340,320 L290,280 Z" />
-      {/* Europe */}
-      <path d="M420,50 L500,60 L480,110 L400,100 Z" />
-      {/* Africa */}
-      <path d="M410,120 L520,120 L550,200 L500,300 L430,220 Z" />
-      {/* Asia */}
-      <path d="M510,40 L850,40 L880,100 L700,160 L600,140 L520,100 Z" />
-      {/* SE Asia & India */}
-      <path d="M600,150 L680,160 L750,220 L700,240 L650,200 Z" />
-      {/* Australia */}
-      <path d="M720,250 L820,250 L800,320 L700,300 Z" />
-    </g>
-  );
-}
-</file>
-
-<file path="components/panels/OverlayShell.tsx">
-import React, { useEffect } from 'react';
-import { useAppState } from '@/components/providers/AppStateProvider';
-
-export function OverlayShell({ children }: { children: React.ReactNode }) {
-  const { dispatch } = useAppState();
-
-  const handleClose = () => {
-    dispatch({ type: 'SET_PANEL', payload: null });
-  };
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        handleClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [dispatch]);
-
-  // Note: We intentionally do not close on backdrop click as requested.
-
-  return (
-    <div className="absolute inset-0 z-[100] overflow-y-auto animate-fade-in" style={{ backgroundColor: 'rgba(7,15,30,0.97)', backdropFilter: 'blur(2px)' }}>
-      <div className="min-h-full p-[32px_40px] relative max-w-5xl mx-auto flex flex-col">
-        <button 
-          onClick={handleClose}
-          className="absolute top-[32px] right-[40px] text-[12px] text-[var(--text-ghost)] hover:text-[var(--text-primary)] transition-colors"
-        >
-          Close &times;
-        </button>
-        {children}
-      </div>
-    </div>
-  );
-}
-</file>
-
-<file path="components/panels/WhoPanel.tsx">
-import React from 'react';
-import { OWNERS } from '@/lib/constants';
-
-const HYPER_STATS: Record<string, { t: number, p: number }> = {
-  'Google': { t: 420, p: 29 },
-  'Meta': { t: 280, p: 19 },
-  'Microsoft': { t: 220, p: 15 },
-  'Amazon': { t: 180, p: 12 }
-};
-
-const TELCO_STATS: Record<string, { t: number, p: number }> = {
-  'Tata Communications': { t: 85, p: 6 },
-  'Orange': { t: 72, p: 5 },
-  'SingTel': { t: 60, p: 4 },
-  'KDDI': { t: 55, p: 4 }
-};
-
-export function WhoPanel() {
-  const hypers = OWNERS.filter(o => o.type === 'private').map(o => ({
-    ...o,
-    cap: HYPER_STATS[o.name]?.t || 100,
-    share: HYPER_STATS[o.name]?.p || 10
-  })).sort((a,b) => b.cap - a.cap);
-
-  const requestedTelcos = ['Tata Communications', 'Orange', 'SingTel', 'KDDI'];
-  const telcos = requestedTelcos.map(name => ({
-    name,
-    cap: TELCO_STATS[name]?.t || 50,
-    share: TELCO_STATS[name]?.p || 3
-  }));
-
-  return (
-    <div className="flex flex-col gap-8 w-full max-w-4xl mx-auto mt-4">
-      {/* Header */}
-      <div className="flex flex-col gap-4">
-        <h2 className="text-[22px] font-bold text-[var(--text-primary)] tracking-[-0.02em]">Who controls the rail</h2>
-        <p className="text-[13px] text-[var(--text-secondary)] max-w-[700px] leading-[1.65]">
-          Ownership of submarine cable capacity has shifted dramatically since 2016. 
-          Hyperscalers now rival — and in several trans-Pacific and trans-Atlantic 
-          corridors surpass — traditional telcos as the primary builders and 
-          operators of global internet infrastructure.
-        </p>
-      </div>
-
-      {/* Grid */}
-      <div className="grid grid-cols-2 gap-5 mt-2">
-        
-        {/* Card 1 */}
-        <div className="bg-[var(--depth-3)] border border-[var(--border-default)] border-l-2 border-l-[var(--accent-blue)] rounded-r-[8px] p-5">
-          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-5">Hyperscaler-owned capacity (2024 est.)</h3>
-          <div className="flex flex-col gap-4">
-            {hypers.map(o => (
-              <div key={o.name} className="flex items-center text-[12px]">
-                <span className="w-[80px] text-[var(--text-secondary)]">{o.name}:</span>
-                <div className="flex-1 mx-4 h-[6px] bg-[var(--depth-4)] rounded-full overflow-hidden">
-                  <div className="h-full bg-[var(--accent-blue)] rounded-full" style={{ width: `${o.share * 3.2}%` }} />
-                </div>
-                <div className="w-[60px] flex justify-between text-[var(--text-primary)]">
-                  <span className="font-semibold">{o.cap}T</span>
-                  <span className="text-[var(--text-muted)]">{o.share}%</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Card 2 */}
-        <div className="bg-[var(--depth-3)] border border-[var(--border-default)] border-l-2 border-l-[var(--accent-teal)] rounded-r-[8px] p-5">
-          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-5">Traditional telco owners</h3>
-          <div className="flex flex-col gap-4">
-            {telcos.map(o => (
-              <div key={o.name} className="flex items-center text-[12px]">
-                <span className="w-[80px] text-[var(--text-secondary)] truncate" title={o.name}>{o.name}:</span>
-                <div className="flex-1 mx-4 h-[6px] bg-[var(--depth-4)] rounded-full overflow-hidden">
-                  <div className="h-full bg-[var(--accent-teal)] rounded-full" style={{ width: `${o.share * 3.2}%` }} />
-                </div>
-                <div className="w-[60px] flex justify-between text-[var(--text-primary)]">
-                  <span className="font-semibold">{o.cap}T</span>
-                  <span className="text-[var(--text-muted)]">{o.share}%</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Card 3 */}
-        <div className="bg-[var(--depth-3)] border border-[var(--border-default)] border-l-2 border-l-[var(--accent-red)] rounded-r-[8px] p-5">
-          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-3">Regulatory flashpoints</h3>
-          <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
-            Infrastructure monopolies inevitably attract state scrutiny. Initiatives like the 
-            US TEAM Telecom committee carefully vet foreign involvement in cable landing 
-            licences. AUKUS discussions have explicitly addressed undersea infrastructure 
-            security in the Pacific, whilst the EU's 2023 Submarine Cable Strategy aims to 
-            bolster European digital sovereignty by funding alternative secure corridors.
-          </p>
-        </div>
-
-        {/* Card 4 */}
-        <div className="bg-[var(--depth-3)] border border-[var(--border-default)] border-l-2 border-l-[var(--text-ghost)] rounded-r-[8px] p-5">
-          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-3">Data source note</h3>
-          <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
-            Ownership data references TeleGeography Global Bandwidth Research 
-            Service. Capacity figures represent design capacity, not lit capacity. 
-            All redundancy scores and event data in this demo are synthetic and 
-            labeled accordingly.
-          </p>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="pt-4 border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-ghost)]">
-        Sources: TeleGeography Submarine Cable Map · OECD Digital Economy Outlook 2023 · CSIS Protecting Undersea Cables Report 2023 · PeeringDB · RIPEstat
-      </div>
-    </div>
-  );
-}
-</file>
-
-<file path="components/panels/WhyPanel.tsx">
-import React from 'react';
-
-export function WhyPanel() {
-  return (
-    <div className="flex flex-col gap-8 w-full max-w-4xl mx-auto mt-4">
-      {/* Header */}
-      <div className="flex flex-col gap-4">
-        <h2 className="text-[22px] font-bold text-[var(--text-primary)] tracking-[-0.02em]">Why submarine cables matter</h2>
-        <p className="text-[13px] text-[var(--text-secondary)] max-w-[700px] leading-[1.65]">
-          Every email, video call, and financial transaction crosses an ocean 
-          on glass fiber thinner than a garden hose, buried on the seafloor at 
-          depths of up to 8,000 metres. Submarine cables are the physical rails 
-          of the internet — and they are almost entirely invisible to the people 
-          who depend on them.
-        </p>
-        <div className="flex items-center gap-2 mt-1">
-          <span className="px-2.5 py-0.5 text-[10px] font-semibold border border-[var(--accent-blue)] bg-[rgba(59,130,246,0.1)] text-[var(--accent-blue)] rounded-full">Everyday viewer</span>
-          <span className="px-2.5 py-0.5 text-[10px] font-semibold border border-[var(--accent-teal)] bg-[rgba(20,184,166,0.1)] text-[var(--accent-teal)] rounded-full">Builder</span>
-          <span className="px-2.5 py-0.5 text-[10px] font-semibold border border-[var(--accent-purple)] bg-[rgba(168,85,247,0.1)] text-[var(--accent-purple)] rounded-full">Allocator</span>
-        </div>
-      </div>
-
-      {/* Grid */}
-      <div className="grid grid-cols-2 gap-5 mt-2">
-        {/* Card 1 */}
-        <div className="bg-[var(--depth-3)] border border-[var(--border-default)] border-l-2 border-l-[var(--accent-blue)] rounded-r-[8px] p-5">
-          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-2">For everyday viewers</h3>
-          <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
-            When a cable breaks — ship anchors drag, earthquakes strike, trawler 
-            nets catch — entire regions lose access to sites hosted elsewhere. 
-            In 2008, a single Red Sea cut cost Egypt 70% of its international 
-            bandwidth. The map makes the hidden visible: that slowness you felt 
-            wasn't abstract; it was a broken wire on the seafloor.
-          </p>
-        </div>
-
-        {/* Card 2 */}
-        <div className="bg-[var(--depth-3)] border border-[var(--border-default)] border-l-2 border-l-[var(--accent-teal)] rounded-r-[8px] p-5">
-          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-2">For builders</h3>
-          <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
-            Latency is geography. The path your API call takes from Mumbai to 
-            London is determined by which cables your cloud provider peers with 
-            at which landing station. Understanding cable topology helps you 
-            architect for real-world latency floors — not theoretical minimums 
-            in a marketing sheet. A 180ms round trip to India isn't a 
-            misconfiguration; it's physics.
-          </p>
-        </div>
-
-        {/* Card 3 */}
-        <div className="bg-[var(--depth-3)] border border-[var(--border-default)] border-l-2 border-l-[var(--accent-purple)] rounded-r-[8px] p-5">
-          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-2">For allocators</h3>
-          <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
-            Cable consortia are multi-billion dollar infrastructure plays with 
-            25-year return horizons. Hyperscalers now own or co-own over 30% of 
-            global submarine capacity. That shifts the competitive dynamics of 
-            cloud pricing, data sovereignty policy, and the negotiating power of 
-            national telcos. Landing station locations determine which 
-            jurisdictions can compel data access.
-          </p>
-        </div>
-
-        {/* Card 4 */}
-        <div className="bg-[var(--depth-3)] border border-[var(--border-default)] border-l-2 border-l-[var(--accent-amber)] rounded-r-[8px] p-5">
-          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-2">Geopolitical dimension</h3>
-          <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
-            State actors can sever or tap submarine cables. The US, UK, and 
-            allies have mapped cable routes for strategic purposes since WWI. 
-            Today, the US TEAM Telecom review scrutinises Chinese-linked ownership 
-            of US landing stations. The EU's Submarine Cable Strategy (2023) 
-            earmarks €2.4B for European cable alternatives. This is infrastructure 
-            as geopolitics.
-          </p>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="pt-4 border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-ghost)]">
-        Sources: TeleGeography Submarine Cable Map · OECD Digital Economy Outlook 2023 · CSIS Protecting Undersea Cables Report 2023 · PeeringDB · RIPEstat
-      </div>
-    </div>
-  );
 }
 </file>
 
@@ -1748,149 +1503,165 @@ export const COUNTRIES: Country[] = [
 ];
 
 export const LANDING_POINTS: LandingPoint[] = [
-  { id: 'lp1', name: 'Virginia Beach, VA', countryId: 'c1', coordinates: [-75.9779, 36.8529] },
-  { id: 'lp2', name: 'Bude, UK', countryId: 'c2', coordinates: [-4.5437, 50.8266] },
-  { id: 'lp3', name: 'Saint-Hilaire-de-Riez, France', countryId: 'c3', coordinates: [-1.9448, 46.7289] },
-  { id: 'lp4', name: 'Shima, Japan', countryId: 'c4', coordinates: [136.8219, 34.3308] },
-  { id: 'lp5', name: 'Tuas, Singapore', countryId: 'c5', coordinates: [103.6366, 1.3294] },
-  { id: 'lp6', name: 'Fortaleza, Brazil', countryId: 'c6', coordinates: [-38.5267, -3.7319] },
-  { id: 'lp7', name: 'Melkbosstrand, South Africa', countryId: 'c7', coordinates: [18.4395, -33.7258] },
-  { id: 'lp8', name: 'Mumbai, India', countryId: 'c8', coordinates: [72.8777, 19.0760] },
-  { id: 'lp9', name: 'Marseille, France', countryId: 'c3', coordinates: [5.3698, 43.2965] },
-  { id: 'lp10', name: 'Bandon, OR', countryId: 'c1', coordinates: [-124.4084, 43.1189] },
-  { id: 'lp11', name: 'Genoa, Italy', countryId: 'c3', coordinates: [8.9463, 44.4056] }
+  { id: 'lp1',  name: 'Virginia Beach, VA',           countryId: 'c1', tier: 2, coordinates: [-75.9779, 36.8529] },
+  { id: 'lp2',  name: 'Bude, UK',                     countryId: 'c2', tier: 1, coordinates: [-4.5437, 50.8266] },
+  { id: 'lp3',  name: 'Saint-Hilaire, France',        countryId: 'c3', tier: 2, coordinates: [-1.9448, 46.7289] },
+  { id: 'lp4',  name: 'Shima, Japan',                 countryId: 'c4', tier: 1, coordinates: [136.8219, 34.3308] },
+  { id: 'lp5',  name: 'Tuas, Singapore',              countryId: 'c5', tier: 1, coordinates: [103.6366, 1.3294] },
+  { id: 'lp6',  name: 'Fortaleza, Brazil',            countryId: 'c6', tier: 2, coordinates: [-38.5267, -3.7319] },
+  { id: 'lp7',  name: 'Melkbosstrand, South Africa',  countryId: 'c7', tier: 2, coordinates: [18.4395, -33.7258] },
+  { id: 'lp8',  name: 'Mumbai, India',                countryId: 'c8', tier: 1, coordinates: [72.8777, 19.0760] },
+  { id: 'lp9',  name: 'Marseille, France',            countryId: 'c3', tier: 1, coordinates: [5.3698, 43.2965] },
+  { id: 'lp10', name: 'Bandon, OR',                   countryId: 'c1', tier: 2, coordinates: [-124.4084, 43.1189] },
+  { id: 'lp11', name: 'Genoa, Italy',                 countryId: 'c3', tier: 3, coordinates: [8.9463, 44.4056] }
 ];
 
 export const CABLES: Cable[] = [
   {
-    id: 'cab1',
-    name: 'MAREA',
-    lengthKm: 6600,
-    capacityTbps: 224,
-    status: 'active',
-    region: 'transatlantic',
-    owners: ['o1', 'o3', 'o8'],
-    landingPoints: ['lp1', 'lp3'],
-    path: [[-75.9779, 36.8529], [-40.0, 42.0], [-1.9448, 46.7289]],
-    color: '#3b82f6',
-    glowColor: 'rgba(59,130,246,0.15)'
+    id: 'cab1', name: 'MAREA', lengthKm: 6600, capacityTbps: 224,
+    status: 'active', region: 'transatlantic',
+    owners: ['o1', 'o3', 'o8'], landingPoints: ['lp1', 'lp3'],
+    // North Atlantic ocean arc — stays well north of shipping lanes
+    path: [
+      [-75.9779, 36.8529],
+      [-68.0, 38.5], [-58.0, 41.5], [-46.0, 44.0],
+      [-34.0, 46.0], [-20.0, 47.5], [-10.0, 47.0],
+      [-1.9448, 46.7289]
+    ],
+    color: '#3b82f6', glowColor: 'rgba(59,130,246,0.4)'
   },
   {
-    id: 'cab2',
-    name: 'Dunant',
-    lengthKm: 6400,
-    capacityTbps: 250,
-    status: 'active',
-    region: 'transatlantic',
-    owners: ['o2', 'o5'],
-    landingPoints: ['lp1', 'lp3'],
-    path: [[-75.9779, 36.8529], [-42.0, 43.0], [-1.9448, 46.7289]],
-    color: '#60a5fa',
-    glowColor: 'rgba(96,165,250,0.15)'
+    id: 'cab2', name: 'Dunant', lengthKm: 6400, capacityTbps: 250,
+    status: 'active', region: 'transatlantic',
+    owners: ['o2', 'o5'], landingPoints: ['lp1', 'lp3'],
+    // Slightly more southerly Atlantic arc
+    path: [
+      [-75.9779, 36.8529],
+      [-66.0, 37.5], [-55.0, 40.5], [-44.0, 43.5],
+      [-32.0, 45.5], [-18.0, 46.5], [-8.0, 46.5],
+      [-1.9448, 46.7289]
+    ],
+    color: '#60a5fa', glowColor: 'rgba(96,165,250,0.4)'
   },
   {
-    id: 'cab3',
-    name: '2Africa',
-    lengthKm: 45000,
-    capacityTbps: 180,
-    status: 'planned',
-    region: 'emea',
-    owners: ['o1', 'o5', 'o6'],
-    landingPoints: ['lp2', 'lp7', 'lp8'],
-    path: [[-4.5437, 50.8266], [-10.0, 20.0], [18.4395, -33.7258], [50.0, -10.0], [72.8777, 19.0760]],
-    color: '#14b8a6',
-    glowColor: 'rgba(20,184,166,0.15)'
+    id: 'cab3', name: '2Africa', lengthKm: 45000, capacityTbps: 180,
+    status: 'planned', region: 'emea',
+    owners: ['o1', 'o5', 'o6'], landingPoints: ['lp2', 'lp7', 'lp8'],
+    // UK → West African coast → Cape → East Africa → India
+    path: [
+      [-4.5437, 50.8266],
+      [-8.0, 42.0], [-12.0, 32.0], [-15.5, 22.0],
+      [-17.0, 13.0], [-16.0, 5.0], [-12.0, -2.0],
+      [-5.0, -12.0], [5.0, -22.0], [12.0, -30.0],
+      [18.4395, -33.7258],
+      [26.0, -28.0], [33.0, -20.0], [39.0, -12.0],
+      [44.0, -5.0], [48.0, 5.0], [53.0, 12.0],
+      [60.0, 16.0], [67.0, 18.0],
+      [72.8777, 19.0760]
+    ],
+    color: '#14b8a6', glowColor: 'rgba(20,184,166,0.4)'
   },
   {
-    id: 'cab4',
-    name: 'AAE-1',
-    lengthKm: 25000,
-    capacityTbps: 40,
-    status: 'active',
-    region: 'emea',
-    owners: ['o7'],
-    landingPoints: ['lp9', 'lp8', 'lp5'],
-    path: [[5.3698, 43.2965], [30.0, 31.0], [45.0, 12.0], [72.8777, 19.0760], [103.6366, 1.3294]],
-    color: '#f59e0b',
-    glowColor: 'rgba(245,158,11,0.12)'
+    id: 'cab4', name: 'AAE-1', lengthKm: 25000, capacityTbps: 40,
+    status: 'active', region: 'emea',
+    owners: ['o7'], landingPoints: ['lp9', 'lp8', 'lp5'],
+    // Marseille → Mediterranean → Suez → Red Sea → Indian Ocean → Bay of Bengal
+    path: [
+      [5.3698, 43.2965],
+      [12.0, 37.5], [20.0, 34.0], [26.0, 32.5], [32.5, 30.5],
+      [36.0, 24.0], [40.0, 18.0], [43.5, 12.5], [46.0, 11.0],
+      [52.0, 13.5], [58.0, 16.0], [65.0, 17.5],
+      [72.8777, 19.0760],
+      [78.0, 12.0], [85.0, 8.0], [92.0, 4.0], [98.0, 2.0],
+      [103.6366, 1.3294]
+    ],
+    color: '#f59e0b', glowColor: 'rgba(245,158,11,0.4)'
   },
   {
-    id: 'cab5',
-    name: 'SeaMeWe-6',
-    lengthKm: 19200,
-    capacityTbps: 120,
-    status: 'planned',
-    region: 'emea',
-    owners: ['o3', 'o5'],
-    landingPoints: ['lp9', 'lp8', 'lp5'],
-    path: [[5.3698, 43.2965], [32.0, 31.5], [47.0, 13.0], [72.8777, 19.0760], [103.6366, 1.3294]],
-    color: '#a855f7',
-    glowColor: 'rgba(168,85,247,0.12)'
+    id: 'cab5', name: 'SeaMeWe-6', lengthKm: 19200, capacityTbps: 120,
+    status: 'planned', region: 'emea',
+    owners: ['o3', 'o5'], landingPoints: ['lp9', 'lp8', 'lp5'],
+    // Slightly different Mediterranean routing
+    path: [
+      [5.3698, 43.2965],
+      [14.0, 38.0], [22.0, 34.5], [28.0, 32.0], [33.0, 30.0],
+      [37.0, 23.5], [41.0, 17.0], [44.5, 12.0],
+      [53.0, 14.0], [60.0, 17.0], [66.0, 18.0],
+      [72.8777, 19.0760],
+      [80.0, 11.0], [88.0, 5.5], [96.0, 2.5],
+      [103.6366, 1.3294]
+    ],
+    color: '#a855f7', glowColor: 'rgba(168,85,247,0.4)'
   },
   {
-    id: 'cab6',
-    name: 'FASTER',
-    lengthKm: 11629,
-    capacityTbps: 60,
-    status: 'active',
-    region: 'transpacific',
-    owners: ['o2'],
-    landingPoints: ['lp10', 'lp4'],
-    path: [[-124.4084, 43.1189], [-160.0, 45.0], [170.0, 42.0], [136.8219, 34.3308]],
-    color: '#22c55e',
-    glowColor: 'rgba(34,197,94,0.12)'
+    id: 'cab6', name: 'FASTER', lengthKm: 11629, capacityTbps: 60,
+    status: 'active', region: 'transpacific',
+    owners: ['o2'], landingPoints: ['lp10', 'lp4'],
+    // Great circle arc across North Pacific — continuous unwrapped coordinates
+    path: [
+      [-124.4084, 43.1189],
+      [-135.0, 46.0], [-145.0, 50.0], [-155.0, 51.5],
+      [-165.0, 51.0], [-175.0, 49.0], [-185.0, 46.5],
+      [-195.0, 43.5], [-205.0, 40.0], [-212.0, 37.0],
+      [-219.0, 35.0], [-223.1781, 34.3308]
+    ],
+    color: '#22c55e', glowColor: 'rgba(34,197,94,0.4)'
   },
   {
-    id: 'cab7',
-    name: 'Jupiter',
-    lengthKm: 14600,
-    capacityTbps: 60,
-    status: 'active',
-    region: 'transpacific',
-    owners: ['o1', 'o4'],
-    landingPoints: ['lp10', 'lp4'],
-    path: [[-124.4084, 43.1189], [-150.0, 40.0], [180.0, 38.0], [136.8219, 34.3308]],
-    color: '#4ade80',
-    glowColor: 'rgba(74,222,128,0.12)'
+    id: 'cab7', name: 'Jupiter', lengthKm: 14600, capacityTbps: 60,
+    status: 'active', region: 'transpacific',
+    owners: ['o1', 'o4'], landingPoints: ['lp10', 'lp4'],
+    // Slightly more southern Pacific arc
+    path: [
+      [-124.4084, 43.1189],
+      [-132.0, 44.5], [-142.0, 47.5], [-152.0, 49.5],
+      [-162.0, 49.0], [-172.0, 47.0], [-182.0, 44.5],
+      [-192.0, 41.5], [-202.0, 38.0], [-210.0, 36.0],
+      [-217.0, 34.5], [-223.1781, 34.3308]
+    ],
+    color: '#4ade80', glowColor: 'rgba(74,222,128,0.4)'
   },
   {
-    id: 'cab8',
-    name: 'Apricot',
-    lengthKm: 12000,
-    capacityTbps: 190,
-    status: 'planned',
-    region: 'intra-asia',
-    owners: ['o1', 'o2'],
-    landingPoints: ['lp4', 'lp5'],
-    path: [[136.8219, 34.3308], [125.0, 20.0], [103.6366, 1.3294]],
-    color: '#f97316',
-    glowColor: 'rgba(249,115,22,0.12)'
+    id: 'cab8', name: 'Apricot', lengthKm: 12000, capacityTbps: 190,
+    status: 'planned', region: 'intra-asia',
+    owners: ['o1', 'o2'], landingPoints: ['lp4', 'lp5'],
+    // Japan → East China Sea → South China Sea → Singapore
+    path: [
+      [136.8219, 34.3308],
+      [133.0, 29.0], [128.0, 23.5], [124.0, 18.0],
+      [120.0, 13.0], [116.0, 8.0], [112.0, 4.5],
+      [108.0, 2.5], [105.0, 1.8],
+      [103.6366, 1.3294]
+    ],
+    color: '#f97316', glowColor: 'rgba(249,115,22,0.4)'
   },
   {
-    id: 'cab9',
-    name: 'ACE',
-    lengthKm: 17000,
-    capacityTbps: 20,
-    status: 'active',
-    region: 'emea',
-    owners: ['o5'],
-    landingPoints: ['lp3', 'lp7'],
-    path: [[-1.9448, 46.7289], [-15.0, 20.0], [-10.0, 0.0], [18.4395, -33.7258]],
-    color: '#ef4444',
-    glowColor: 'rgba(239,68,68,0.12)'
+    id: 'cab9', name: 'ACE', lengthKm: 17000, capacityTbps: 20,
+    status: 'active', region: 'emea',
+    owners: ['o5'], landingPoints: ['lp3', 'lp7'],
+    // France → West African coast → South Africa
+    path: [
+      [-1.9448, 46.7289],
+      [-5.0, 42.0], [-8.0, 36.0], [-12.0, 28.5],
+      [-15.0, 20.0], [-16.5, 12.0], [-16.0, 5.0],
+      [-14.0, -1.0], [-10.0, -8.0], [-5.0, -16.0],
+      [2.0, -22.0], [8.0, -28.0], [13.0, -32.0],
+      [18.4395, -33.7258]
+    ],
+    color: '#ef4444', glowColor: 'rgba(239,68,68,0.4)'
   },
   {
-    id: 'cab10',
-    name: 'EllaLink',
-    lengthKm: 6200,
-    capacityTbps: 100,
-    status: 'active',
-    region: 'transatlantic',
-    owners: ['o8'],
-    landingPoints: ['lp6', 'lp11'],
-    path: [[-38.5267, -3.7319], [-20.0, 20.0], [8.9463, 44.4056]],
-    color: '#8b5cf6',
-    glowColor: 'rgba(139,92,246,0.12)'
+    id: 'cab10', name: 'EllaLink', lengthKm: 6200, capacityTbps: 100,
+    status: 'active', region: 'transatlantic',
+    owners: ['o8'], landingPoints: ['lp6', 'lp11'],
+    // Fortaleza Brazil → Mid-Atlantic → Genoa Italy
+    path: [
+      [-38.5267, -3.7319],
+      [-30.0, 4.0], [-22.0, 12.0], [-14.0, 20.0],
+      [-6.0, 28.0], [0.0, 34.0], [4.0, 38.5],
+      [7.0, 42.0], [8.9463, 44.4056]
+    ],
+    color: '#8b5cf6', glowColor: 'rgba(139,92,246,0.4)'
   }
 ];
 </file>
@@ -1931,6 +1702,207 @@ export function downloadData() {
 }
 </file>
 
+<file path="lib/geojson.ts">
+import { Cable, LandingPoint } from './types';
+
+let firstInvalidLogged = false;
+
+function isValidCoordinate(coord: number[]): boolean {
+  return Array.isArray(coord) &&
+         coord.length === 2 &&
+         typeof coord[0] === 'number' &&
+         typeof coord[1] === 'number' &&
+         !isNaN(coord[0]) &&
+         !isNaN(coord[1]);
+}
+
+function logInvalid(id: string, coord: any, type: string) {
+  if (!firstInvalidLogged) {
+    console.error(`Invalid coordinate in ${type} ID: ${id}. Received:`, coord);
+    firstInvalidLogged = true;
+  }
+}
+
+// Catmull-Rom spline: generates smooth curves that pass through all waypoints.
+// Each segment between p1→p2 uses p0 and p3 as tangent guides.
+function catmullRomInterpolate(points: [number, number][], steps = 20): [number, number][] {
+  if (points.length < 2) return points;
+  const result: [number, number][] = [];
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[Math.max(0, i - 1)];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[Math.min(points.length - 1, i + 2)];
+
+    for (let s = 0; s < steps; s++) {
+      const t  = s / steps;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      const lng =
+        0.5 *
+        (2 * p1[0] +
+          (-p0[0] + p2[0]) * t +
+          (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 +
+          (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3);
+      const lat =
+        0.5 *
+        (2 * p1[1] +
+          (-p0[1] + p2[1]) * t +
+          (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 +
+          (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3);
+      result.push([lng, lat]);
+    }
+  }
+
+  result.push(points[points.length - 1]);
+  return result;
+}
+
+/**
+ * Split a polyline at the antimeridian (±180°) so cables that cross the
+ * International Date Line render cleanly within a single world view.
+ *
+ * Returns an array of segments — most cables return exactly one segment,
+ * transpacific cables return two (one each side of ±180°).
+ */
+function splitAtAntimeridian(path: [number, number][]): [number, number][][] {
+  if (path.length < 2) return [path];
+
+  const segments: [number, number][][] = [[]];
+  let cur = segments[0];
+
+  const wrapLng = (lng: number) => {
+    let w = lng;
+    while (w <= -180) w += 360;
+    while (w > 180) w -= 360;
+    return w;
+  };
+
+  let prevLng = path[0][0];
+  cur.push([wrapLng(path[0][0]), path[0][1]]);
+
+  for (let i = 1; i < path.length; i++) {
+    const pt = path[i];
+    const lng = pt[0];
+
+    if (prevLng > -180 && lng <= -180) {
+      // Crossing from East to West across the -180 line (e.g. US to Japan)
+      const fraction = (-180 - prevLng) / (lng - prevLng);
+      const crossLat = path[i-1][1] + fraction * (pt[1] - path[i-1][1]);
+      
+      cur.push([-180, crossLat]);
+      segments.push([[180, crossLat]]);
+      cur = segments[segments.length - 1];
+    } else if (prevLng < 180 && lng >= 180) {
+      // Crossing from West to East across the +180 line
+      const fraction = (180 - prevLng) / (lng - prevLng);
+      const crossLat = path[i-1][1] + fraction * (pt[1] - path[i-1][1]);
+      
+      cur.push([180, crossLat]);
+      segments.push([[-180, crossLat]]);
+      cur = segments[segments.length - 1];
+    }
+
+    cur.push([wrapLng(lng), pt[1]]);
+    prevLng = lng;
+  }
+
+  return segments.filter(s => s.length >= 2);
+}
+
+export function cablesToGeoJSON(cables: Cable[]) {
+  const features: any[] = [];
+
+  cables.forEach((cable) => {
+    let validPath = cable.path.filter(p => {
+      if (isValidCoordinate(p)) return true;
+      logInvalid(cable.id, p, 'Cable');
+      return false;
+    }) as [number, number][];
+
+    if (validPath.length < 2) return;
+
+    // Catmull-Rom smooth interpolation through ocean-following waypoints
+    const smoothPath = catmullRomInterpolate(validPath, 20);
+
+    // Split at the antimeridian — keeps all coordinates within -180/+180
+    // and prevents the horizontal line artifact on transpacific cables.
+    const segments = splitAtAntimeridian(smoothPath);
+
+    const props = {
+      id:           cable.id,
+      name:         cable.name,
+      capacityTbps: cable.capacityTbps,
+      status:       cable.status,
+      color:        cable.color,
+      glowColor:    cable.glowColor,
+      region:       cable.region,
+      redundancy:   cable.landingPoints.length,
+    };
+
+    if (segments.length === 1) {
+      // Single continuous route — emit one LineString Feature
+      features.push({
+        type: 'Feature',
+        geometry: { type: 'LineString', coordinates: segments[0] },
+        properties: props,
+      });
+    } else {
+      // Multi-segment transoceanic route — emit one MultiLineString Feature.
+      // All segments share the same properties (same cable ID) so click/hover
+      // events behave identically regardless of which segment is interacted with.
+      features.push({
+        type: 'Feature',
+        geometry: { type: 'MultiLineString', coordinates: segments },
+        properties: props,
+      });
+    }
+  });
+
+  return {
+    type: 'FeatureCollection' as const,
+    features,
+  };
+}
+
+export function landingPointsToGeoJSON(points: LandingPoint[], activeCables: Cable[]) {
+  const features = points.map((lp) => {
+    if (!isValidCoordinate(lp.coordinates)) {
+      logInvalid(lp.id, lp.coordinates, 'LandingPoint');
+      return null;
+    }
+
+    // Calculate intelligence metrics for this landing point based on active cables
+    const connectedCables = activeCables.filter(c => c.landingPoints.includes(lp.id));
+    const capacityTbps = connectedCables.reduce((sum, c) => sum + c.capacityTbps, 0);
+    const redundancyRating = connectedCables.length > 2 ? 'High' : connectedCables.length === 2 ? 'Medium' : 'Low';
+
+    return {
+      type: 'Feature' as const,
+      geometry: {
+        type: 'Point' as const,
+        coordinates: lp.coordinates,
+      },
+      properties: {
+        id:              lp.id,
+        name:            lp.name,
+        countryId:       lp.countryId,
+        tier:            lp.tier ?? 3,
+        connectedCables: connectedCables.length,
+        capacityTbps:    capacityTbps,
+        redundancy:      redundancyRating,
+      },
+    };
+  }).filter(Boolean);
+
+  return {
+    type: 'FeatureCollection' as const,
+    features: features as any[],
+  };
+}
+</file>
+
 <file path="lib/types.ts">
 // /lib/types.ts
 export type CableStatus = 'active' | 'planned' | 'under_repair' | 'offline';
@@ -1954,6 +1926,7 @@ export interface LandingPoint {
   name: string;
   countryId: string;
   coordinates: [number, number];
+  tier?: 1 | 2 | 3; // 1=Global Hub, 2=Regional Hub, 3=Standard
 }
 
 export interface Cable {
@@ -2077,15 +2050,19 @@ export default nextConfig;
     "@base-ui/react": "^1.6.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "leaflet": "^1.9.4",
     "lucide-react": "^1.21.0",
     "next": "14.2.15",
     "react": "^18",
     "react-dom": "^18",
+    "react-leaflet": "^4.2.1",
+    "recharts": "^3.9.0",
     "shadcn": "^4.11.0",
     "tailwind-merge": "^3.6.0",
     "tw-animate-css": "^1.4.0"
   },
   "devDependencies": {
+    "@types/leaflet": "^1.9.21",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
@@ -2107,6 +2084,18 @@ const config = {
 };
 
 export default config;
+</file>
+
+<file path="public/mock/cables.geojson">
+{"type":"FeatureCollection","features":[]}
+</file>
+
+<file path="public/mock/landing_points.geojson">
+{"type":"FeatureCollection","features":[]}
+</file>
+
+<file path="public/mock/ownership.json">
+[]
 </file>
 
 <file path="README.md">
@@ -2168,6 +2157,16 @@ const config: Config = {
   plugins: [],
 };
 export default config;
+</file>
+
+<file path="test.js">
+const fs = require('fs');
+
+const constants = fs.readFileSync('./lib/constants.ts', 'utf-8');
+
+// We can just execute the array strings to get the raw JSON
+const cablesStr = constants.substring(constants.indexOf('export const CABLES'), constants.length);
+// that's too complex to parse safely with regex, let's just use ts-node with --transpile-only
 </file>
 
 <file path="tsconfig.json">

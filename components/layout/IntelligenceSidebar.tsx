@@ -210,11 +210,23 @@ export function IntelligenceSidebar() {
 
       {/* SECTION C: Who Controls The Rail */}
       <div className="p-5 border-b border-[var(--border)]">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">Ownership Concentration</h3>
-        <p className="text-xs text-[var(--text-muted)] mb-4">
-          Hyperscalers (Google, Meta, Microsoft, Amazon) have fundamentally shifted from leasing capacity to owning the physical rails.
-        </p>
-        <div className="h-32 w-full">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">Ownership Intelligence</h3>
+        
+        {/* Ownership Assessment */}
+        <div className="bg-[var(--background)] border border-[var(--border)] p-2.5 rounded shadow-sm mb-4">
+          <div className="flex justify-between items-center mb-1.5">
+            <span className="text-[9px] uppercase font-bold text-[#38BDF8] tracking-widest">Ownership Concentration Risk</span>
+            <span className="text-[10px] font-bold text-[#f59e0b]">MODERATE</span>
+          </div>
+          <span className="text-[10px] text-[#cbd5e1] leading-tight block mb-1.5">
+            Four entities influence more than half of tracked network capacity.
+          </span>
+          <span className="text-[10px] text-[#cbd5e1] leading-tight block">
+            Concentration increases operational dependence on a limited set of infrastructure stakeholders.
+          </span>
+        </div>
+
+        <div className="h-28 w-full mb-4">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart layout="vertical" data={ownerData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
               <XAxis type="number" hide />
@@ -227,6 +239,41 @@ export function IntelligenceSidebar() {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+        </div>
+
+        {/* Top Owners List */}
+        <div className="mb-4">
+          <span className="text-[9px] uppercase text-[#818CF8] font-bold tracking-widest mb-1.5 block">Top Owners</span>
+          <div className="flex flex-col gap-[1px] bg-[var(--border)]">
+            <div className="bg-[var(--background)] p-2 flex justify-between items-center">
+              <span className="text-[10px] text-gray-200 font-medium">Google</span>
+              <span className="text-[10px] font-bold text-[#38BDF8]">24%</span>
+            </div>
+            <div className="bg-[var(--background)] p-2 flex justify-between items-center">
+              <span className="text-[10px] text-gray-200 font-medium">Meta</span>
+              <span className="text-[10px] font-bold text-[#38BDF8]">18%</span>
+            </div>
+            <div className="bg-[var(--background)] p-2 flex justify-between items-center">
+              <span className="text-[10px] text-gray-200 font-medium">Microsoft</span>
+              <span className="text-[10px] font-bold text-[#38BDF8]">15%</span>
+            </div>
+            <div className="bg-[var(--background)] p-2 flex justify-between items-center">
+              <span className="text-[10px] text-gray-200 font-medium">Orange</span>
+              <span className="text-[10px] font-bold text-[#38BDF8]">12%</span>
+            </div>
+            <div className="bg-[var(--background)] p-2 flex justify-between items-center">
+              <span className="text-[10px] text-[var(--text-muted)] font-medium">Others</span>
+              <span className="text-[10px] font-bold text-[var(--text-muted)]">31%</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Infrastructure Insight */}
+        <div className="border-l-2 border-[#10b981] pl-3 py-1">
+          <span className="text-[9px] uppercase font-bold text-[#10b981] tracking-widest block mb-1">Governance Outlook</span>
+          <p className="text-[10px] text-[#94a3b8] leading-tight">
+            Ownership remains diversified across telecom operators and hyperscalers, reducing single-entity control risk.
+          </p>
         </div>
       </div>
 
@@ -297,7 +344,46 @@ export function IntelligenceSidebar() {
         </div>
       </div>
 
-      {/* SECTION E: Data & Export */}
+      {/* SECTION E: Infrastructure Events */}
+      <div className="p-5 border-b border-[var(--border)]">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-4">Infrastructure Events</h3>
+        
+        <div className="relative border-l border-[var(--border)] ml-1.5 py-1 flex flex-col gap-4">
+          
+          <div className="relative pl-3.5">
+            <div className="absolute w-1.5 h-1.5 rounded-full bg-[#f97316] -left-[3.5px] top-1.5 shadow-[0_0_4px_#f97316]"></div>
+            <p className="text-[10px] text-gray-200 leading-tight mb-1">Marseille remains primary EMEA landing hub</p>
+            <span className="inline-block text-[8px] uppercase font-bold tracking-widest text-[#f97316] bg-[#f97316]/10 border border-[#f97316]/20 px-1 py-0.5 rounded">Impact: High</span>
+          </div>
+
+          <div className="relative pl-3.5">
+            <div className="absolute w-1.5 h-1.5 rounded-full bg-[#06b6d4] -left-[3.5px] top-1.5 shadow-[0_0_4px_#06b6d4]"></div>
+            <p className="text-[10px] text-gray-200 leading-tight mb-1">Suez corridor carrying concentrated regional traffic</p>
+            <span className="inline-block text-[8px] uppercase font-bold tracking-widest text-[#06b6d4] bg-[#06b6d4]/10 border border-[#06b6d4]/20 px-1 py-0.5 rounded">Impact: Moderate</span>
+          </div>
+
+          <div className="relative pl-3.5">
+            <div className="absolute w-1.5 h-1.5 rounded-full bg-[#818CF8] -left-[3.5px] top-1.5 shadow-[0_0_4px_#818CF8]"></div>
+            <p className="text-[10px] text-gray-200 leading-tight mb-1">{activeCablesCount} active cable systems currently operational</p>
+            <span className="inline-block text-[8px] uppercase font-bold tracking-widest text-[#818CF8] bg-[#818CF8]/10 border border-[#818CF8]/20 px-1 py-0.5 rounded">Impact: Informational</span>
+          </div>
+
+          <div className="relative pl-3.5">
+            <div className="absolute w-1.5 h-1.5 rounded-full bg-[#06b6d4] -left-[3.5px] top-1.5 shadow-[0_0_4px_#06b6d4]"></div>
+            <p className="text-[10px] text-gray-200 leading-tight mb-1">Ownership concentration unchanged</p>
+            <span className="inline-block text-[8px] uppercase font-bold tracking-widest text-[#06b6d4] bg-[#06b6d4]/10 border border-[#06b6d4]/20 px-1 py-0.5 rounded">Impact: Moderate</span>
+          </div>
+
+          <div className="relative pl-3.5">
+            <div className="absolute w-1.5 h-1.5 rounded-full bg-[#64748b] -left-[3.5px] top-1.5 shadow-[0_0_4px_#64748b]"></div>
+            <p className="text-[10px] text-gray-200 leading-tight mb-1">Atlantic redundancy remains strong</p>
+            <span className="inline-block text-[8px] uppercase font-bold tracking-widest text-[#64748b] bg-[#64748b]/10 border border-[#64748b]/20 px-1 py-0.5 rounded">Impact: Low</span>
+          </div>
+
+        </div>
+      </div>
+
+      {/* SECTION F: Data & Export */}
       <div className="p-5 mt-auto">
         <button 
           onClick={handleDownload}
