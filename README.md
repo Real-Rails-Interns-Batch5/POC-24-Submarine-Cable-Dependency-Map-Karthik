@@ -1,36 +1,228 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Submarine Cable Dependency Map
 
-## Getting Started
+A Real Rails Global Infrastructure Intelligence Dashboard designed to visualize submarine cable networks, analyze ownership concentration, evaluate infrastructure resilience, and simulate network disruptions.
 
-First, run the development server:
+## Overview
+
+The Submarine Cable Dependency Map transforms complex subsea infrastructure data into an interactive intelligence platform for exploring global cable connectivity, landing point ecosystems, ownership influence, and operational risk.
+
+Built as part of the Real Rails Intelligence Library, the platform combines geospatial infrastructure visualization with backend-powered intelligence services to provide a comprehensive view of critical internet infrastructure.
+
+## Features
+
+### Infrastructure Intelligence
+
+* Global submarine cable network visualization
+* Landing point connectivity analysis
+* Regional infrastructure coverage assessment
+* Network health monitoring
+* Infrastructure resilience scoring
+
+### Ownership Analytics
+
+* Cable ownership concentration analysis
+* Hyperscaler influence monitoring
+* Regional ownership breakdowns
+* Recharts-powered intelligence visualizations
+
+### Failure Simulation
+
+* Cable disruption simulation
+* Capacity loss assessment
+* Alternative route recommendations
+* Risk narrative generation
+* Resilience impact analysis
+
+### Operational Dashboard
+
+* Real Rails 70/30 intelligence layout
+* Unified Intelligence Sidebar
+* Infrastructure KPI monitoring
+* Dynamic filtering and exploration
+* Infrastructure intelligence reporting
+
+---
+
+## Technology Stack
+
+### Frontend
+
+* Next.js 14
+* TypeScript
+* React
+* Tailwind CSS
+* Leaflet
+* React Leaflet
+* Recharts
+
+### Backend
+
+* FastAPI
+* Python
+* Pydantic
+* Uvicorn
+
+### Data Layer
+
+* GeoJSON Infrastructure Pipeline
+* Cached JSON Data Services
+* Simulation Engine
+* Intelligence Services
+
+---
+
+## Architecture
+
+Frontend (Next.js)
+↓
+API Layer (lib/api.ts)
+↓
+FastAPI Backend
+↓
+Intelligence Services
+↓
+Infrastructure Data Store
+
+### Backend Services
+
+#### Network API
+
+* Network overview metrics
+* Infrastructure assessment
+* Health monitoring
+
+#### Cable API
+
+* Cable intelligence
+* Landing point data
+* Regional filtering
+
+#### Ownership API
+
+* Ownership concentration
+* Country intelligence
+* Ownership analytics
+
+#### Simulation API
+
+* Cable cut simulation
+* Impact assessment
+* Scenario history
+
+---
+
+## Running Locally
+
+### Frontend
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Frontend runs on:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Backend
 
-## Learn More
+Install dependencies:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+pip install -r backend/requirements.txt
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Run backend:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+python run.py
+```
 
-## Deploy on Vercel
+or
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+python -m uvicorn backend.main:app --reload
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Backend runs on:
+
+```bash
+http://127.0.0.1:8000
+```
+
+Swagger Documentation:
+
+```bash
+http://127.0.0.1:8000/docs
+```
+
+---
+
+## Environment Variables
+
+Create `.env.local`
+
+```env
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+```
+
+No API keys are required.
+
+No Mapbox tokens are required.
+
+The application uses Leaflet with open map tiles.
+
+---
+
+## Real Rails Compliance
+
+The platform follows the Real Rails design system:
+
+* Obsidian Theme (#030712)
+* Strict 70/30 Intelligence Layout
+* Unified Intelligence Sidebar
+* Infrastructure-first terminology
+* Recharts analytics
+* GeoJSON-based mapping architecture
+* Operational intelligence workflows
+
+---
+
+## Current Status
+
+Phase 1 fully operational.
+
+The platform includes:
+
+* Global cable visualization
+* Landing point intelligence
+* Ownership concentration analytics
+* Infrastructure resilience assessment
+* Failure simulation workflows
+* FastAPI backend services
+* Frontend-backend integration
+* Operational intelligence dashboards
+
+---
+
+## Future Improvements
+
+* Advanced infrastructure risk modeling
+* Real-world cable datasets
+* Historical outage analysis
+* Infrastructure event monitoring
+* Enhanced route intelligence
+* Deployment and cloud hosting
+* Persistent simulation history
+
+---
+
+## Author
+
+**Karthik L**
+
+Real Rails Intelligence Library — POC #24
+
+Global Infrastructure Rail
