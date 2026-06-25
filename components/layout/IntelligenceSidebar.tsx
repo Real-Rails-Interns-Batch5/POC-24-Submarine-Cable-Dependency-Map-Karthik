@@ -2,57 +2,73 @@
 
 import React, { useMemo } from 'react';
 import { useAppState } from '@/components/providers/AppStateProvider';
-import { CABLES, OWNERS } from '@/lib/constants';
 import { getFilteredCables } from '@/lib/utils';
 import { downloadData } from '@/lib/download';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
+import { useNetworkOverview, useAssessment, useCables, useCable, useOwners, useOwnership, useRunSimulation } from '@/lib/useApi';
 
 export function IntelligenceSidebar() {
   const { state, dispatch } = useAppState();
   const { filters, selectedCable, sim } = state;
 
-  const filteredCables = useMemo(() => getFilteredCables(CABLES, filters), [filters]);
+  // ── API data ──────────────────────────────────────────────────────────────
+  const { data: allCables }   = useCables();
+  const { data: overview }    = useNetworkOverview();
+  const { data: assessment }  = useAssessment();
+  const { data: owners }      = useOwners();
+  const { data: ownerPcts }   = useOwnership();
+  const { data: selectedCableData } = useCable(selectedCable);
 
-  const activeCablesCount = filteredCables.filter(c => c.status === 'active').length;
-  const totalCapacity = filteredCables.reduce((sum, c) => sum + c.capacityTbps, 0);
+  // ── Simulation hook ───────────────────────────────────────────────────────
+  const { run: runSim, result: simResult, loading: simLoading, error: simError, reset: resetSim } = useRunSimulation();
 
-  const selectedCableData = selectedCable ? CABLES.find(c => c.id === selectedCable) : null;
+  // Apply client-side filters to the full cable list for the failure sim dropdown
+  const filteredCables = useMemo(
+    () => getFilteredCables(allCables ?? [], filters),
+    [allCables, filters]
+  );
 
-  // Chart data computation
+  // Derived KPI values – fall back to 0 while loading
+  const activeCablesCount = overview?.active_cables ?? 0;
+  const totalCapacity     = overview?.capacity_tbps  ?? 0;
+  const healthScore       = overview?.health_score    ?? 92;
+
+  // Bar chart data – computed from owners + filtered cables
   const ownerData = useMemo(() => {
+    if (!owners || !allCables) return [
+      { name: 'Hyperscalers', capacity: 0, fill: 'var(--primary)' },
+      { name: 'Telecoms',     capacity: 0, fill: 'var(--secondary)' },
+    ];
     let hyperscalerCapacity = 0;
     let telcoCapacity = 0;
-
     filteredCables.forEach(cable => {
-      const cableOwners = cable.owners.map(oId => OWNERS.find(o => o.id === oId));
-      const hyperCount = cableOwners.filter(o => o?.type === 'private').length;
-      const telcoCount = cableOwners.filter(o => o?.type === 'telecom').length;
+      const cableOwners = cable.owners.map(oId => owners.find(o => o.id === oId));
+      const hyperCount  = cableOwners.filter(o => o?.type === 'private').length;
+      const telcoCount  = cableOwners.filter(o => o?.type === 'telecom').length;
       const total = hyperCount + telcoCount;
-
       if (total > 0) {
         hyperscalerCapacity += (hyperCount / total) * cable.capacityTbps;
-        telcoCapacity += (telcoCount / total) * cable.capacityTbps;
+        telcoCapacity       += (telcoCount  / total) * cable.capacityTbps;
       }
     });
-
     return [
       { name: 'Hyperscalers', capacity: Math.round(hyperscalerCapacity), fill: 'var(--primary)' },
-      { name: 'Telecoms', capacity: Math.round(telcoCapacity), fill: 'var(--secondary)' }
+      { name: 'Telecoms',     capacity: Math.round(telcoCapacity),       fill: 'var(--secondary)' },
     ];
-  }, [filteredCables]);
+  }, [filteredCables, owners, allCables]);
 
   const handleFilterChange = (key: keyof typeof state.filters, value: string) => {
     dispatch({ type: 'SET_FILTERS', payload: { [key]: value } });
   };
 
-  const handleSimulate = () => {
-    if (selectedCable) {
-      dispatch({ type: 'SET_SIM_STATE', payload: { running: true, cableId: selectedCable } });
-    }
+  const handleSimulate = async () => {
+    if (!selectedCable) return;
+    await runSim(selectedCable);
   };
 
   const handleResetSim = () => {
-    dispatch({ type: 'SET_SIM_STATE', payload: { running: false, cableId: null } });
+    resetSim();
+    dispatch({ type: 'SET_SELECTED_CABLE', payload: null });
   };
 
   const handleDownload = () => {
@@ -90,8 +106,8 @@ export function IntelligenceSidebar() {
               </div>
               <div className="bg-[var(--background)] p-3 flex flex-col">
                 <span className="text-[9px] uppercase text-[var(--text-muted)] font-semibold tracking-wider mb-0.5">Ownership</span>
-                <span className="text-[10px] font-bold text-[#38BDF8] leading-tight mt-1 truncate" title={selectedCableData.owners.map(oId => OWNERS.find(o => o.id === oId)?.name).join(', ')}>
-                  {selectedCableData.owners.map(oId => OWNERS.find(o => o.id === oId)?.name).join(', ')}
+                <span className="text-[10px] font-bold text-[#38BDF8] leading-tight mt-1 truncate" title={selectedCableData.owners.map(oId => owners?.find(o => o.id === oId)?.name).join(', ')}>
+                  {selectedCableData.owners.map(oId => owners?.find(o => o.id === oId)?.name).join(', ')}
                 </span>
               </div>
             </div>
@@ -133,7 +149,7 @@ export function IntelligenceSidebar() {
             </div>
             
             <div className="flex flex-col bg-[var(--background)] border border-[var(--border)] p-2.5 rounded shadow-sm">
-              <span className="text-xl font-bold text-[var(--text-primary)] leading-none tracking-tight mb-1">{new Set(filteredCables.flatMap(c => c.landingPoints)).size}</span>
+              <span className="text-xl font-bold text-[var(--text-primary)] leading-none tracking-tight mb-1">{overview?.landing_points ?? 0}</span>
               <span className="text-[9px] uppercase font-semibold tracking-wider text-[var(--text-muted)] mb-1.5">Landing Points</span>
               <span className="text-[9px] text-[#64748b] leading-tight">Coastal hubs terminating and amplifying signals.</span>
             </div>
@@ -145,9 +161,13 @@ export function IntelligenceSidebar() {
             </div>
 
             <div className="flex flex-col bg-[var(--background)] border border-[var(--border)] p-2.5 rounded shadow-sm">
-              <span className={`text-xl font-bold leading-none tracking-tight mb-1 ${sim.running ? 'text-[#ef4444]' : 'text-[#38BDF8]'}`}>{sim.running ? '74' : '92'}<span className="text-xs font-medium opacity-50">/100</span></span>
+              <span className={`text-xl font-bold leading-none tracking-tight mb-1 ${simResult ? 'text-[#f97316]' : 'text-[#38BDF8]'}`}>
+                {simResult ? simResult.health_score : healthScore}<span className="text-xs font-medium opacity-50">/100</span>
+              </span>
               <span className="text-[9px] uppercase font-semibold tracking-wider text-[var(--text-muted)] mb-1.5">Network Health</span>
-              <span className="text-[9px] text-[#64748b] leading-tight">Current aggregated global infrastructure resilience score.</span>
+              <span className="text-[9px] text-[#64748b] leading-tight">
+                {simResult ? `Post-cut · was ${healthScore}` : 'Current aggregated global infrastructure resilience score.'}
+              </span>
             </div>
           </div>
         )}
@@ -157,27 +177,31 @@ export function IntelligenceSidebar() {
       <div className="p-5 border-b border-[var(--border)]">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">Current Assessment</h3>
         
-        {/* Core Indicators */}
+        {/* Core Indicators – data from GET /api/network/assessment */}
         <div className="flex flex-col gap-1.5 mb-4 border-l-2 border-[#38BDF8] pl-3">
           <div className="flex justify-between items-center">
             <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider">Network Health</span>
-            <span className={`text-xs font-bold ${sim.running ? 'text-[#ef4444]' : 'text-[#38BDF8]'}`}>{sim.running ? '74/100' : '92/100'}</span>
+            <span className={`text-xs font-bold ${simResult ? 'text-[#f97316]' : 'text-[#38BDF8]'}`}>
+              {simResult ? `${simResult.health_score}/100` : `${healthScore}/100`}
+            </span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider">Infrastructure Resilience</span>
-            <span className={`text-xs font-bold ${sim.running ? 'text-[#f59e0b]' : 'text-[#22c55e]'}`}>{sim.running ? 'Stressed' : 'Strong'}</span>
+            <span className={`text-xs font-bold ${simResult ? 'text-[#f97316]' : 'text-[#22c55e]'}`}>
+              {simResult ? 'Stressed' : (assessment?.resilience ?? 'Strong')}
+            </span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider">Ownership Concentration</span>
-            <span className="text-xs font-bold text-[#f59e0b]">Moderate</span>
+            <span className="text-xs font-bold text-[#f59e0b]">{assessment?.ownership_concentration ?? 'Moderate'}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider">Primary Bottleneck</span>
-            <span className="text-xs font-bold text-gray-200">Suez Corridor</span>
+            <span className="text-xs font-bold text-gray-200">{assessment?.primary_bottleneck ?? 'Suez Corridor'}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider">Regional Dependency</span>
-            <span className="text-xs font-bold text-gray-200">High in EMEA</span>
+            <span className="text-xs font-bold text-gray-200">{assessment?.regional_dependency ?? 'High in EMEA'}</span>
           </div>
         </div>
 
@@ -200,8 +224,8 @@ export function IntelligenceSidebar() {
           <div className="bg-[var(--background)] border border-[var(--border)] p-2.5 rounded shadow-sm">
             <span className="text-[9px] uppercase font-bold text-[#38BDF8] tracking-widest block mb-1">Operational Outlook</span>
             <span className="text-[10px] text-[#cbd5e1] leading-tight block">
-              {sim.running 
-                ? 'Active disruption detected. Payload shifting to adjacent networks causing elevated regional latency and bottlenecking.' 
+              {simResult
+                ? 'Active disruption detected. Payload shifting to adjacent networks causing elevated regional latency.'
                 : 'Current network posture remains stable with no active disruption scenarios reported.'}
             </span>
           </div>
@@ -241,29 +265,19 @@ export function IntelligenceSidebar() {
           </ResponsiveContainer>
         </div>
 
-        {/* Top Owners List */}
+        {/* Top Owners List – data from GET /api/ownership/percentages */}
         <div className="mb-4">
           <span className="text-[9px] uppercase text-[#818CF8] font-bold tracking-widest mb-1.5 block">Top Owners</span>
           <div className="flex flex-col gap-[1px] bg-[var(--border)]">
-            <div className="bg-[var(--background)] p-2 flex justify-between items-center">
-              <span className="text-[10px] text-gray-200 font-medium">Google</span>
-              <span className="text-[10px] font-bold text-[#38BDF8]">24%</span>
-            </div>
-            <div className="bg-[var(--background)] p-2 flex justify-between items-center">
-              <span className="text-[10px] text-gray-200 font-medium">Meta</span>
-              <span className="text-[10px] font-bold text-[#38BDF8]">18%</span>
-            </div>
-            <div className="bg-[var(--background)] p-2 flex justify-between items-center">
-              <span className="text-[10px] text-gray-200 font-medium">Microsoft</span>
-              <span className="text-[10px] font-bold text-[#38BDF8]">15%</span>
-            </div>
-            <div className="bg-[var(--background)] p-2 flex justify-between items-center">
-              <span className="text-[10px] text-gray-200 font-medium">Orange</span>
-              <span className="text-[10px] font-bold text-[#38BDF8]">12%</span>
-            </div>
+            {(['google','meta','microsoft','orange'] as const).map(key => (
+              <div key={key} className="bg-[var(--background)] p-2 flex justify-between items-center">
+                <span className="text-[10px] text-gray-200 font-medium capitalize">{key}</span>
+                <span className="text-[10px] font-bold text-[#38BDF8]">{ownerPcts?.[key] ?? '--'}%</span>
+              </div>
+            ))}
             <div className="bg-[var(--background)] p-2 flex justify-between items-center">
               <span className="text-[10px] text-[var(--text-muted)] font-medium">Others</span>
-              <span className="text-[10px] font-bold text-[var(--text-muted)]">31%</span>
+              <span className="text-[10px] font-bold text-[var(--text-muted)]">{ownerPcts?.others ?? '--'}%</span>
             </div>
           </div>
         </div>
@@ -302,14 +316,19 @@ export function IntelligenceSidebar() {
           </div>
         </div>
 
+        {/* ── Failure Simulation ──────────────────────────────────────────── */}
         <div className="bg-[var(--background)] p-4 border border-[var(--border)] rounded-md border-l-2 border-l-[var(--accent-amber)]">
-          <h4 className="text-xs font-semibold mb-2">Failure Simulation</h4>
-          <p className="text-[10px] text-[var(--text-muted)] mb-3">Analyze network rerouting capacity and physical bottlenecks upon simulated cable cuts.</p>
-          
+          <h4 className="text-xs font-semibold mb-1">Failure Simulation</h4>
+          <p className="text-[10px] text-[var(--text-muted)] mb-3">
+            Analyze network rerouting capacity and physical bottlenecks upon simulated cable cuts.
+          </p>
+
+          {/* Cable selector */}
           <div className="flex flex-col mb-3">
             <label className="text-[10px] text-[var(--text-muted)] uppercase mb-1">Select Cable</label>
-            <select 
-              value={selectedCable || ''} 
+            <select
+              id="sim-cable-select"
+              value={selectedCable || ''}
               onChange={(e) => dispatch({ type: 'SET_SELECTED_CABLE', payload: e.target.value || null })}
               className="bg-[var(--surface)] border border-[var(--border)] rounded text-xs p-2 focus:outline-none focus:border-[var(--primary)]"
             >
@@ -317,30 +336,131 @@ export function IntelligenceSidebar() {
               {filteredCables.filter(c => c.status !== 'planned').map(cable => (
                 <option key={cable.id} value={cable.id}>{cable.name} ({cable.capacityTbps} Tbps)</option>
               ))}
+              {filteredCables.length === 0 && <option disabled>Loading cables…</option>}
             </select>
           </div>
 
+          {/* Action buttons */}
           <div className="flex gap-2">
-            <button 
+            <button
+              id="sim-run-btn"
               onClick={handleSimulate}
-              disabled={!selectedCable || sim.running}
-              className="flex-1 bg-[var(--border)] hover:bg-[var(--primary)] hover:text-black disabled:opacity-50 text-xs py-2 rounded transition-colors"
+              disabled={!selectedCable || simLoading}
+              className="flex-1 bg-[var(--border)] hover:bg-[var(--primary)] hover:text-black disabled:opacity-50 text-xs py-2 rounded transition-colors font-medium"
             >
-              Simulate Cut
+              {simLoading ? 'Running…' : 'Simulate Cut'}
             </button>
-            <button 
+            <button
+              id="sim-reset-btn"
               onClick={handleResetSim}
-              disabled={!sim.running}
+              disabled={!simResult && !simError}
               className="flex-1 bg-transparent border border-[var(--border)] hover:bg-[var(--border)] disabled:opacity-50 text-xs py-2 rounded transition-colors"
             >
               Reset
             </button>
           </div>
-          {sim.running && selectedCable && (
-            <div className="mt-3 p-2 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] rounded text-[10px] text-[var(--accent-red)]">
-              CRITICAL: Active simulation running. {CABLES.find(c => c.id === selectedCable)?.capacityTbps} Tbps rerouted to adjacent infrastructure.
+
+          {/* Loading state */}
+          {simLoading && (
+            <div className="mt-3 flex items-center gap-2 p-2.5 bg-[rgba(56,189,248,0.06)] border border-[rgba(56,189,248,0.15)] rounded">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#38BDF8] animate-pulse shrink-0" />
+              <span className="text-[10px] text-[#38BDF8] font-medium tracking-wide">Calculating Network Impact…</span>
             </div>
           )}
+
+          {/* Error state */}
+          {simError && !simLoading && (
+            <div className="mt-3 p-2.5 bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.2)] rounded">
+              <span className="text-[10px] text-[#ef4444] font-semibold block">Simulation unavailable</span>
+              <span className="text-[9px] text-[#94a3b8] leading-tight block mt-0.5">{simError}</span>
+            </div>
+          )}
+
+          {/* Intelligence Result Card */}
+          {simResult && !simLoading && (() => {
+            const ic =
+              simResult.impact === 'HIGH'
+                ? { bg: 'rgba(249,115,22,0.12)', bd: 'rgba(249,115,22,0.35)', tx: '#f97316' }
+                : simResult.impact === 'MEDIUM'
+                ? { bg: 'rgba(6,182,212,0.12)',  bd: 'rgba(6,182,212,0.35)',  tx: '#06b6d4' }
+                : { bg: 'rgba(100,116,139,0.12)', bd: 'rgba(100,116,139,0.35)', tx: '#64748b' };
+            return (
+              <div className="mt-3 flex flex-col gap-1.5">
+
+                {/* Impact level + capacity lost */}
+                <div
+                  style={{ background: ic.bg, borderColor: ic.bd, color: ic.tx }}
+                  className="flex items-center justify-between px-2.5 py-2 rounded border"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span style={{ background: ic.tx }} className="inline-block w-1.5 h-1.5 rounded-full shrink-0" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">{simResult.impact} IMPACT</span>
+                  </div>
+                  <span className="text-[10px] font-bold">{simResult.capacity_loss_tbps} Tbps lost</span>
+                </div>
+
+                {/* Network health before → after */}
+                <div className="bg-[var(--background)] border border-[var(--border)] rounded px-2.5 py-2">
+                  <span className="text-[9px] uppercase font-bold text-[#94a3b8] tracking-widest block mb-1.5">Network Health</span>
+                  <div className="flex items-stretch gap-1">
+                    <div className="flex-1 flex flex-col items-center bg-[rgba(56,189,248,0.06)] rounded py-1.5">
+                      <span className="text-[8px] text-[#64748b] uppercase tracking-wider mb-0.5">Before</span>
+                      <span className="text-sm font-bold text-[#38BDF8] leading-none">{healthScore}</span>
+                    </div>
+                    <div className="flex items-center px-0.5 text-[#475569] text-xs">→</div>
+                    <div className="flex-1 flex flex-col items-center bg-[rgba(249,115,22,0.06)] rounded py-1.5">
+                      <span className="text-[8px] text-[#64748b] uppercase tracking-wider mb-0.5">After</span>
+                      <span className="text-sm font-bold text-[#f97316] leading-none">{simResult.health_score}</span>
+                    </div>
+                    <div className="flex items-center px-0.5 text-[#475569] text-xs">·</div>
+                    <div className="flex-1 flex flex-col items-center bg-[rgba(239,68,68,0.06)] rounded py-1.5">
+                      <span className="text-[8px] text-[#64748b] uppercase tracking-wider mb-0.5">Delta</span>
+                      <span className="text-sm font-bold text-[#ef4444] leading-none">−{healthScore - simResult.health_score}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Affected regions */}
+                <div className="bg-[var(--background)] border border-[var(--border)] rounded px-2.5 py-2">
+                  <span className="text-[9px] uppercase font-bold text-[#94a3b8] tracking-widest block mb-1.5">Affected Regions</span>
+                  <div className="flex flex-wrap gap-1">
+                    {simResult.affected_regions.map(r => (
+                      <span key={r} className="text-[9px] px-1.5 py-0.5 bg-[rgba(249,115,22,0.1)] border border-[rgba(249,115,22,0.2)] text-[#f97316] rounded font-semibold uppercase tracking-wide">
+                        {r}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Risk narrative */}
+                <div className="bg-[var(--background)] border border-[var(--border)] rounded px-2.5 py-2">
+                  <span className="text-[9px] uppercase font-bold text-[#818CF8] tracking-widest block mb-1">Risk Narrative</span>
+                  <p className="text-[10px] text-[#94a3b8] leading-relaxed">{simResult.risk_narrative}</p>
+                </div>
+
+                {/* Rerouting recommendation */}
+                <div className="bg-[var(--background)] border border-[var(--border)] rounded px-2.5 py-2">
+                  <span className="text-[9px] uppercase font-bold text-[#38BDF8] tracking-widest block mb-1">Rerouting Recommendation</span>
+                  <p className="text-[10px] text-[#94a3b8] leading-relaxed">{simResult.rerouting_recommendation}</p>
+                </div>
+
+                {/* Alternative cables */}
+                {simResult.alternative_cables.length > 0 && (
+                  <div className="bg-[var(--background)] border border-[var(--border)] rounded px-2.5 py-2">
+                    <span className="text-[9px] uppercase font-bold text-[#10b981] tracking-widest block mb-1.5">Alternative Routes</span>
+                    <div className="flex flex-wrap gap-1">
+                      {simResult.alternative_cables.map(cable => (
+                        <span key={cable} className="text-[9px] px-1.5 py-0.5 bg-[rgba(16,185,129,0.1)] border border-[rgba(16,185,129,0.2)] text-[#10b981] rounded font-semibold">
+                          {cable}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            );
+          })()}
         </div>
       </div>
 

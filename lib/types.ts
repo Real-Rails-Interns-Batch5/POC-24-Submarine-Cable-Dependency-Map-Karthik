@@ -43,9 +43,25 @@ export interface FilterState {
   status: string;
 }
 
+export interface SimulationResult {
+  health_score: number;
+  capacity_loss_tbps: number;
+  affected_regions: string[];
+  rerouting_required: boolean;
+  impact: 'HIGH' | 'MEDIUM' | 'LOW';
+  summary: string;
+  resilience_score: number;
+  rerouting_recommendation: string;
+  alternative_cables: string[];
+  risk_narrative: string;
+  timestamp: string;
+}
+
 export interface SimState {
   running: boolean;
   cableId: string | null;
+  result: SimulationResult | null;
+  error: string | null;
 }
 
 export interface AppState {
