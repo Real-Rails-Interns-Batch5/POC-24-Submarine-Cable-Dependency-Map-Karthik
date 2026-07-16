@@ -66,8 +66,10 @@ export interface SimState {
 
 export interface AppState {
   selectedCable: string | null;
+  selectedLandingPoint: string | null;
   activeTab: 'map' | 'country' | 'sim';
   filters: FilterState;
   sim: SimState;
   panel: 'why' | 'who' | null;
+  panelOpen: boolean;
 }

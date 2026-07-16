@@ -4,13 +4,13 @@
 
 @layer base {
   :root {
-    --background: #030712;
-    --surface: #0B1117;
-    --border: #1F2937;
-    --primary: #38BDF8;
-    --secondary: #818CF8;
-    --text-primary: #e5e7eb;
-    --text-muted: #9ca3af;
+    --background: #08131B;
+    --surface: #0D1C28;
+    --border: #1D3446;
+    --primary: #36D6FF;
+    --secondary: #5EEAD4;
+    --text-primary: #F1F5F9;
+    --text-muted: #94A3B8;
     --accent-red: #ef4444;
     --accent-amber: #f59e0b;
     --accent-green: #10b981;
@@ -45,11 +45,42 @@ body {
 
 @keyframes fadeIn {
   from { opacity: 0; }
-  to { opacity: 1; }
+  to   { opacity: 1; }
 }
 
 .animate-fade-in {
   animation: fadeIn 0.2s ease-out forwards;
+}
+
+/* Header mount — rises gently from top edge */
+@keyframes headerRise {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-header-rise {
+  animation: headerRise 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Panel content fade-slide — runs when inner content swaps */
+@keyframes panelContentIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-panel-content {
+  animation: panelContentIn 0.25s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Marker-selection feedback — quick scale flash on the close button */
+@keyframes popIn {
+  0%   { transform: scale(0.8); opacity: 0; }
+  60%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+.animate-pop-in {
+  animation: popIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 /* Landing point pulse animation — Tier 1 Global Hubs */
@@ -62,7 +93,7 @@ body {
 .hub-pulse-ring {
   position: absolute;
   border-radius: 50%;
-  border: 1.5px solid #38BDF8;
+  border: 1.5px solid #36D6FF;
   animation: hubPulse 2.4s ease-out infinite;
   pointer-events: none;
 }
@@ -73,7 +104,7 @@ body {
 
 /* Leaflet map attribution strip */
 .leaflet-control-attribution {
-  background: rgba(3, 7, 18, 0.75) !important;
+  background: rgba(8, 19, 27, 0.75) !important;
   color: #3d4d66 !important;
   font-size: 9px !important;
   border-radius: 4px 0 0 0 !important;
@@ -85,14 +116,14 @@ body {
 
 /* Ensure map container doesn't bleed */
 .leaflet-container {
-  background: #030712 !important;
+  background: #08131B !important;
 }
 
 /* Landing point tooltip */
 .lp-tooltip {
-  background: #0B1117;
-  border: 1px solid #1F2937;
-  color: #e5e7eb;
+  background: #0D1C28;
+  border: 1px solid #1D3446;
+  color: #F1F5F9;
   font-size: 11px;
   font-family: 'Inter', sans-serif;
   padding: 8px 10px;
@@ -104,7 +135,7 @@ body {
 
 /* Persistent LP labels */
 .lp-permanent-label {
-  color: #e2e8f0;
+  color: #F1F5F9;
   font-family: 'Inter', sans-serif;
   font-size: 10px;
   font-weight: 600;
@@ -120,7 +151,7 @@ body {
 }
 
 .lp-permanent-label span {
-  color: #38BDF8;
+  color: #36D6FF;
   font-size: 8px;
   font-weight: 500;
   opacity: 0.9;

@@ -381,9 +381,10 @@ interface LandingPointLayersProps {
   simCableId: string | null;
   affectedLPIds: Set<string>;
   visibleLayers: VisibleLayers;
+  onLPClick: (id: string) => void;
 }
 
-function LandingPointLayers({ geojsonLPs, affectedLPIds, visibleLayers }: LandingPointLayersProps) {
+function LandingPointLayers({ geojsonLPs, affectedLPIds, visibleLayers, onLPClick }: LandingPointLayersProps) {
   const map = useMap();
   const [zoom, setZoom] = useState(map.getZoom());
   
@@ -425,6 +426,11 @@ function LandingPointLayers({ geojsonLPs, affectedLPIds, visibleLayers }: Landin
 
   const onEachLP = (feature: any, layer: any) => {
     const props = feature.properties;
+    
+    layer.on({
+      click: () => onLPClick(props.id)
+    });
+
     const tierLabel = props.tier === 1 ? 'Global Internet Hub' :
                       props.tier === 2 ? 'Regional Hub' : 'Landing Station';
                       
@@ -460,7 +466,7 @@ function LandingPointLayers({ geojsonLPs, affectedLPIds, visibleLayers }: Landin
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 export default function LeafletCableMap() {
-  const { state, dispatch } = useAppState();
+  const { state, dispatch, openPanel } = useAppState();
   const { filters, selectedCable, sim } = state;
 
   const [hoveredCable, setHoveredCable] = useState<string | null>(null);
@@ -493,7 +499,9 @@ export default function LeafletCableMap() {
   }, [sim]);
 
   const handleCableClick = (id: string) => {
-    dispatch({ type: 'SET_SELECTED_CABLE', payload: selectedCable === id ? null : id });
+    dispatch({ type: 'SET_SELECTED_CABLE', payload: id });
+    dispatch({ type: 'SET_SELECTED_LANDING_POINT', payload: null });
+    openPanel();
   };
 
   return (
@@ -533,6 +541,11 @@ export default function LeafletCableMap() {
           simCableId={sim.running ? sim.cableId : null}
           affectedLPIds={affectedLPIds}
           visibleLayers={visibleLayers}
+          onLPClick={(id) => {
+            dispatch({ type: 'SET_SELECTED_LANDING_POINT', payload: id });
+            dispatch({ type: 'SET_SELECTED_CABLE', payload: null });
+            openPanel();
+          }}
         />
 
         <CuratedLabelsLayer />
