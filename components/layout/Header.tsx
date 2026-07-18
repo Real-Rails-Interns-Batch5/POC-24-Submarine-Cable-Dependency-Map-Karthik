@@ -1,93 +1,90 @@
 "use client";
 
-import { Info, X } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { Info, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
-  const popoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setIsOpen(false);
-      }
+      if (event.key === "Escape") setIsOpen(false);
     }
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('keydown', handleKeyDown);
-    }
-    
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen]);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   return (
-    <header className="animate-header-rise absolute top-0 left-0 w-full z-40 flex justify-between items-start px-6 py-4 pointer-events-none">
-      <div className="flex items-center backdrop-blur-md bg-[var(--surface)]/30 border border-[var(--border)]/50 px-4 py-2 rounded-lg pointer-events-auto shadow-lg">
+    <header className="animate-header-rise absolute inset-x-0 top-0 z-[5] flex items-start justify-between px-6 py-4 pointer-events-none">
+      <div className="pointer-events-auto rounded-lg border border-[var(--border)]/50 bg-[var(--surface)]/80 px-4 py-2 shadow-lg backdrop-blur-md">
         <h1 className="text-xs font-bold tracking-widest uppercase text-[var(--text-primary)]">
-          Infrastructure <span className="text-[var(--primary)] ml-1">Intelligence</span>
+          Infrastructure <span className="ml-1 text-[var(--primary)]">Intelligence</span>
         </h1>
       </div>
-      
-      <div className="relative pointer-events-auto" ref={popoverRef}>
-        <button 
-          onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center justify-center p-2 backdrop-blur-md bg-[var(--surface)]/30 border border-[var(--border)]/50 rounded-lg text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors shadow-lg"
-          aria-label="Information"
-          aria-expanded={isOpen}
-          aria-haspopup="dialog"
-        >
-          <Info size={16} />
-        </button>
 
-        {isOpen && (
-          <div 
-            className="absolute top-full right-0 mt-2 w-56 p-4 rounded-xl backdrop-blur-md bg-[#0D1C28]/80 border border-[#1D3446]/50 shadow-2xl animate-fade-in text-[#F1F5F9]"
-            role="dialog"
-            aria-label="Project Information"
+      <button
+        onClick={() => setIsOpen(true)}
+        className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)]/70 bg-[var(--surface)]/85 text-[var(--text-muted)] shadow-lg backdrop-blur-md transition-colors hover:border-[var(--primary)]/60 hover:text-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/70"
+        aria-label="About this dashboard"
+        aria-haspopup="dialog"
+      >
+        <Info size={18} />
+      </button>
+
+      {isOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-[#030712]/70 p-5 animate-fade-in"
+            role="presentation"
+            onMouseDown={() => setIsOpen(false)}
           >
-            <button 
-              onClick={() => setIsOpen(false)} 
-              className="absolute top-3 right-3 text-[#94A3B8] hover:text-[#36D6FF] transition-colors"
-              aria-label="Close"
-            >
-              <X size={14} />
-            </button>
-            
-            <div className="flex flex-col gap-3">
+          <section
+            className="w-full max-w-md rounded-2xl border border-[#36D6FF]/25 bg-[#0D1C28] p-6 shadow-2xl shadow-black/60"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="project-information-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="mb-6 flex items-start justify-between gap-4">
               <div>
-                <span className="block text-[8px] uppercase tracking-widest text-[#94A3B8] font-bold mb-0.5">Architect</span>
-                <span className="text-xs font-medium">Karthik L</span>
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[#36D6FF]">Project information</p>
+                <h2 id="project-information-title" className="text-xl font-semibold text-[#F1F5F9]">Submarine Cable Dependency Map</h2>
               </div>
-              
-              <div>
-                <span className="block text-[8px] uppercase tracking-widest text-[#94A3B8] font-bold mb-0.5">Batch</span>
-                <span className="text-xs font-medium">Batch 5 Interns</span>
-              </div>
-              
-              <div>
-                <span className="block text-[8px] uppercase tracking-widest text-[#94A3B8] font-bold mb-1.5">Stack</span>
-                <div className="flex flex-wrap gap-1.5">
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-[#36D6FF]/10 text-[#36D6FF] border border-[#36D6FF]/20">Next.js</span>
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-[#10b981]/10 text-[#10b981] border border-[#10b981]/20">FastAPI</span>
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-[#818CF8]/10 text-[#818CF8] border border-[#818CF8]/20">Tailwind CSS</span>
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-[#f59e0b]/10 text-[#f59e0b] border border-[#f59e0b]/20">Leaflet</span>
-                </div>
-              </div>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="rounded-md p-1.5 text-[#94A3B8] transition-colors hover:bg-[#1D3446] hover:text-[#F1F5F9] focus:outline-none focus:ring-2 focus:ring-[#36D6FF]/70"
+                aria-label="Close project information"
+              >
+                <X size={18} />
+              </button>
             </div>
-          </div>
+
+            <dl className="space-y-4 text-sm">
+              <div className="grid grid-cols-[100px_1fr] gap-4 border-b border-[#1D3446] pb-4">
+                <dt className="text-xs font-bold uppercase tracking-wider text-[#94A3B8]">Architect</dt>
+                <dd className="font-medium text-[#F1F5F9]">Karthik L</dd>
+              </div>
+              <div className="grid grid-cols-[100px_1fr] gap-4 border-b border-[#1D3446] pb-4">
+                <dt className="text-xs font-bold uppercase tracking-wider text-[#94A3B8]">Cohort</dt>
+                <dd className="font-medium text-[#F1F5F9]">Batch 5 Interns</dd>
+              </div>
+              <div>
+                <dt className="mb-2 text-xs font-bold uppercase tracking-wider text-[#94A3B8]">Technology</dt>
+                <dd className="flex flex-wrap gap-2">
+                  {['Next.js', 'FastAPI', 'Tailwind CSS', 'Leaflet'].map((technology) => (
+                    <span key={technology} className="rounded border border-[#36D6FF]/20 bg-[#36D6FF]/10 px-2 py-1 text-xs font-medium text-[#36D6FF]">
+                      {technology}
+                    </span>
+                  ))}
+                </dd>
+              </div>
+            </dl>
+          </section>
+          </div>,
+          document.body
         )}
-      </div>
     </header>
   );
 }
