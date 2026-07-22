@@ -1,11 +1,11 @@
-﻿/**
+/**
  * lib/api.ts
  * Centralised API client for the FastAPI backend.
  * All fetch calls go through here – components never call fetch() directly.
  */
 import { Cable, LandingPoint, Owner, Country } from "./types";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 

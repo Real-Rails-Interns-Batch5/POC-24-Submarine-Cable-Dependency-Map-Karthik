@@ -20,7 +20,7 @@ export function Header() {
     <header className="animate-header-rise absolute inset-x-0 top-0 z-[5] flex items-start justify-between px-6 py-4 pointer-events-none">
       <div className="pointer-events-auto rounded-lg border border-[var(--border)]/50 bg-[var(--surface)]/80 px-4 py-2 shadow-lg backdrop-blur-md">
         <h1 className="text-xs font-bold tracking-widest uppercase text-[var(--text-primary)]">
-          Infrastructure <span className="ml-1 text-[var(--primary)]">Intelligence</span>
+          Infocreon <span className="ml-1 text-[var(--primary)]">Internship</span>
         </h1>
       </div>
 

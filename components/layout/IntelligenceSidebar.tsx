@@ -79,7 +79,7 @@ export function IntelligenceSidebar() {
     <div className="flex flex-col h-full bg-[var(--surface)] text-[var(--text-primary)]">
       {/* SECTION A: Title + KPI */}
       <div className="p-5 border-b border-[var(--border)]">
-        <h1 className="text-lg font-semibold text-[var(--primary)] mb-1">Infrastructure Intelligence</h1>
+        <h1 className="text-lg font-semibold text-[var(--primary)] mb-1">Infocreon Internship</h1>
         {selectedCableData ? (
           <div className="mt-4 flex flex-col bg-[var(--background)] border border-[var(--border)] rounded shadow-sm overflow-hidden">
             {/* Header / Badge */}
